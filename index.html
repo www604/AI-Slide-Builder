@@ -376,16 +376,16 @@
         <header class="header">
             <div class="logo">Slides AI Pro</div>
             <div class="header-actions">
-                <button class="btn btn-secondary" onclick="showTemplates()">Templates</button>
-                <button class="btn btn-secondary" onclick="presentSlides()">Present</button>
-                <button class="btn btn-primary" onclick="exportPresentation()">Export</button>
+                <button class="btn btn-secondary" id="templatesBtn">Templates</button>
+                <button class="btn btn-secondary" id="presentBtn">Present</button>
+                <button class="btn btn-primary" id="exportBtn">Export</button>
             </div>
         </header>
 
         <!-- Sidebar -->
         <aside class="sidebar">
             <div class="sidebar-header">
-                <button class="btn btn-primary" style="width: 100%" onclick="addNewSlide()">+ New Slide</button>
+                <button class="btn btn-primary" style="width: 100%" id="addSlideBtn">+ New Slide</button>
             </div>
             <div class="slide-list" id="slideList"></div>
         </aside>
@@ -395,14 +395,14 @@
             <!-- Toolbar -->
             <div class="toolbar">
                 <div class="toolbar-group">
-                    <button class="tool-btn" onclick="addElement('title')" title="Add Title">H</button>
-                    <button class="tool-btn" onclick="addElement('text')" title="Add Text">T</button>
-                    <button class="tool-btn" onclick="addElement('bullet')" title="Add List">•</button>
+                    <button class="tool-btn" id="addTitleBtn" title="Add Title">H</button>
+                    <button class="tool-btn" id="addTextBtn" title="Add Text">T</button>
+                    <button class="tool-btn" id="addBulletBtn" title="Add List">•</button>
                 </div>
                 <div class="toolbar-group">
-                    <button class="tool-btn" onclick="formatText('bold')" title="Bold"><b>B</b></button>
-                    <button class="tool-btn" onclick="formatText('italic')" title="Italic"><i>I</i></button>
-                    <button class="tool-btn" onclick="formatText('underline')" title="Underline"><u>U</u></button>
+                    <button class="tool-btn" id="boldBtn" title="Bold"><b>B</b></button>
+                    <button class="tool-btn" id="italicBtn" title="Italic"><i>I</i></button>
+                    <button class="tool-btn" id="underlineBtn" title="Underline"><u>U</u></button>
                 </div>
                 <div class="toolbar-group">
                     <span>Slide <span id="currentSlide">1</span> of <span id="totalSlides">1</span></span>
@@ -417,12 +417,12 @@
     </div>
 
     <!-- AI Assistant -->
-    <button class="ai-trigger" id="aiTrigger" onclick="toggleAI()">🤖</button>
+    <button class="ai-trigger" id="aiTrigger">🤖</button>
     
     <div class="ai-panel" id="aiPanel">
         <div class="ai-header">
             <h3>AI Assistant</h3>
-            <button class="btn btn-secondary" onclick="toggleAI()">×</button>
+            <button class="btn btn-secondary" id="closeAIBtn">×</button>
         </div>
         <div class="ai-messages" id="aiMessages">
             <div class="ai-message assistant">
@@ -435,8 +435,8 @@
             </div>
         </div>
         <div class="ai-input-area">
-            <input type="text" class="ai-input" id="aiInput" placeholder="Type your command..." onkeypress="if(event.key==='Enter') sendAICommand()">
-            <button class="btn btn-primary" onclick="sendAICommand()">Send</button>
+            <input type="text" class="ai-input" id="aiInput" placeholder="Type your command...">
+            <button class="btn btn-primary" id="sendAIBtn">Send</button>
         </div>
     </div>
 
@@ -445,20 +445,20 @@
         <div class="modal-content">
             <h2 class="mb-20">Choose a Template</h2>
             <div class="template-grid">
-                <div class="template-card" onclick="applyTemplate('business')">
+                <div class="template-card" data-template="business">
                     <div style="font-size: 48px; margin-bottom: 10px;">💼</div>
                     <h4>Business</h4>
                 </div>
-                <div class="template-card" onclick="applyTemplate('education')">
+                <div class="template-card" data-template="education">
                     <div style="font-size: 48px; margin-bottom: 10px;">🎓</div>
                     <h4>Education</h4>
                 </div>
-                <div class="template-card" onclick="applyTemplate('creative')">
+                <div class="template-card" data-template="creative">
                     <div style="font-size: 48px; margin-bottom: 10px;">🎨</div>
                     <h4>Creative</h4>
                 </div>
             </div>
-            <button class="btn btn-secondary" onclick="hideTemplates()" style="margin-top: 20px;">Cancel</button>
+            <button class="btn btn-secondary" id="cancelTemplatesBtn" style="margin-top: 20px;">Cancel</button>
         </div>
     </div>
 
@@ -483,11 +483,61 @@
         let selectedElement = null;
 
         // Initialize
-        window.onload = function() {
+        function init() {
             renderSlideList();
             renderSlide();
             updateSlideCounter();
-        };
+            setupEventListeners();
+        }
+
+        // Setup all event listeners
+        function setupEventListeners() {
+            // Header buttons
+            document.getElementById('templatesBtn').addEventListener('click', showTemplates);
+            document.getElementById('presentBtn').addEventListener('click', presentSlides);
+            document.getElementById('exportBtn').addEventListener('click', exportPresentation);
+            
+            // Sidebar
+            document.getElementById('addSlideBtn').addEventListener('click', addNewSlide);
+            
+            // Toolbar
+            document.getElementById('addTitleBtn').addEventListener('click', () => addElement('title'));
+            document.getElementById('addTextBtn').addEventListener('click', () => addElement('text'));
+            document.getElementById('addBulletBtn').addEventListener('click', () => addElement('bullet'));
+            document.getElementById('boldBtn').addEventListener('click', () => formatText('bold'));
+            document.getElementById('italicBtn').addEventListener('click', () => formatText('italic'));
+            document.getElementById('underlineBtn').addEventListener('click', () => formatText('underline'));
+            
+            // AI Assistant
+            document.getElementById('aiTrigger').addEventListener('click', toggleAI);
+            document.getElementById('closeAIBtn').addEventListener('click', toggleAI);
+            document.getElementById('sendAIBtn').addEventListener('click', sendAICommand);
+            document.getElementById('aiInput').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') sendAICommand();
+            });
+            
+            // Templates
+            document.getElementById('cancelTemplatesBtn').addEventListener('click', hideTemplates);
+            document.querySelectorAll('.template-card').forEach(card => {
+                card.addEventListener('click', () => applyTemplate(card.dataset.template));
+            });
+            
+            // Modal close on outside click
+            document.getElementById('templateModal').addEventListener('click', (e) => {
+                if (e.target === e.currentTarget) hideTemplates();
+            });
+            
+            // Keyboard shortcuts
+            document.addEventListener('keydown', (e) => {
+                if (e.target.tagName !== 'INPUT' && e.target.contentEditable !== 'true') {
+                    if (e.key === 'ArrowLeft' && presentation.currentSlide > 0) {
+                        selectSlide(presentation.currentSlide - 1);
+                    } else if (e.key === 'ArrowRight' && presentation.currentSlide < presentation.slides.length - 1) {
+                        selectSlide(presentation.currentSlide + 1);
+                    }
+                }
+            });
+        }
 
         // Slide Management
         function renderSlideList() {
@@ -529,9 +579,7 @@
                 // Add controls
                 const controls = document.createElement('div');
                 controls.className = 'element-controls';
-                controls.innerHTML = `
-                    <button class="tool-btn" onclick="deleteElement(${index})">🗑️</button>
-                `;
+                controls.innerHTML = `<button class="tool-btn" onclick="deleteElement(${index})">🗑️</button>`;
                 el.appendChild(controls);
                 
                 canvas.appendChild(el);
@@ -796,7 +844,7 @@
                 }
                 response = 'Changed background';
                 
-            } else if (lowerCommand.includes('next') || lowerCommand.includes('slide')) {
+            } else if (lowerCommand.includes('next')) {
                 if (presentation.currentSlide < presentation.slides.length - 1) {
                     selectSlide(presentation.currentSlide + 1);
                     response = 'Moved to next slide';
@@ -889,23 +937,18 @@
                     if (e.key === 'ArrowRight') nextSlide();
                     if (e.key === 'ArrowLeft') prevSlide();
                 });
-            </script>
+            <\/script>
             </body></html>`;
             
             win.document.write(html);
             win.document.close();
         }
 
-        // Keyboard shortcuts
-        document.addEventListener('keydown', (e) => {
-            if (e.target.tagName !== 'INPUT' && e.target.contentEditable !== 'true') {
-                if (e.key === 'ArrowLeft' && presentation.currentSlide > 0) {
-                    selectSlide(presentation.currentSlide - 1);
-                } else if (e.key === 'ArrowRight' && presentation.currentSlide < presentation.slides.length - 1) {
-                    selectSlide(presentation.currentSlide + 1);
-                }
-            }
-        });
+        // Make deleteElement globally accessible
+        window.deleteElement = deleteElement;
+
+        // Initialize when page loads
+        window.addEventListener('DOMContentLoaded', init);
     </script>
 </body>
 </html>
