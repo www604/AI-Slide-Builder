@@ -1,503 +1,911 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Type, Palette, ArrowBigUp, ArrowBigDown, Trash2, Mic, Bot } from 'lucide-react';
-
-// --- Helper Functions & Initial Data ---
-const generateId = () => `el_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
-const initialSlides = [
-    {
-        id: 'slide_1',
-        elements: [
-            {
-                id: generateId(),
-                type: 'text',
-                content: 'Welcome to AI Presenter!',
-                x: 50,
-                y: 100,
-                width: 700,
-                height: 100,
-                style: {
-                    fontSize: '48px',
-                    fontWeight: 'bold',
-                    color: '#1e293b',
-                    textAlign: 'center',
-                    fontFamily: 'Inter, sans-serif'
-                }
-            },
-            {
-                id: generateId(),
-                type: 'text',
-                content: "Use the chat on the left to edit this presentation with AI. Try prompts like:\n\n- \"Change the title to 'My First Presentation'\"\n- \"Add a text box with 'Hello World'\"\n- \"Make this text blue and larger\"\n- \"Add a new slide\"",
-                x: 100,
-                y: 250,
-                width: 600,
-                height: 200,
-                style: {
-                    fontSize: '20px',
-                    color: '#475569',
-                    textAlign: 'left',
-                    fontFamily: 'Inter, sans-serif'
-                }
-            }
-        ],
-        background: '#f1f5f9'
-    }
-];
-
-
-// --- Main App Component ---
-export default function App() {
-    const [slides, setSlides] = useState(initialSlides);
-    const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
-    const [selectedElementId, setSelectedElementId] = useState(null);
-    const [aiPrompt, setAiPrompt] = useState('');
-    const [isAiThinking, setIsAiThinking] = useState(false);
-    const [chatHistory, setChatHistory] = useState([]);
-    
-    const selectedElement = slides[currentSlideIndex]?.elements.find(el => el.id === selectedElementId);
-    const canvasRef = useRef(null);
-
-    // --- State Update Functions ---
-
-    const updateElementStyle = (elementId, newStyles) => {
-        setSlides(prevSlides => prevSlides.map((slide, index) => {
-            if (index !== currentSlideIndex) return slide;
-            return {
-                ...slide,
-                elements: slide.elements.map(el => {
-                    if (el.id === elementId) {
-                        return { ...el, style: { ...el.style, ...newStyles } };
-                    }
-                    return el;
-                })
-            };
-        }));
-    };
-    
-    const updateElementPosition = (elementId, newPosition) => {
-        setSlides(prevSlides => prevSlides.map((slide, index) => {
-            if (index !== currentSlideIndex) return slide;
-            return {
-                ...slide,
-                elements: slide.elements.map(el => {
-                    if (el.id === elementId) {
-                        return { ...el, ...newPosition };
-                    }
-                    return el;
-                })
-            };
-        }));
-    };
-
-    const updateElementContent = (elementId, content) => {
-        setSlides(prevSlides => prevSlides.map((slide, index) => {
-            if (index !== currentSlideIndex) return slide;
-            return {
-                ...slide,
-                elements: slide.elements.map(el => {
-                    if (el.id === elementId) {
-                        return { ...el, content };
-                    }
-                    return el;
-                })
-            };
-        }));
-    };
-
-
-    const addElement = (elementType, content = 'New Text', customProps = {}) => {
-        const newElement = {
-            id: generateId(),
-            type: elementType,
-            content,
-            x: 150,
-            y: 150,
-            width: 300,
-            height: 50,
-            style: {
-                fontSize: '24px',
-                color: '#1e293b',
-                fontFamily: 'Inter, sans-serif',
-                ...customProps.style
-            },
-            ...customProps
-        };
-
-        setSlides(prevSlides => prevSlides.map((slide, index) => {
-            if (index !== currentSlideIndex) return slide;
-            return { ...slide, elements: [...slide.elements, newElement] };
-        }));
-        setSelectedElementId(newElement.id);
-    };
-
-    const deleteElement = (elementId) => {
-        setSlides(prevSlides => prevSlides.map((slide, index) => {
-            if (index !== currentSlideIndex) return slide;
-            return { ...slide, elements: slide.elements.filter(el => el.id !== elementId) };
-        }));
-        setSelectedElementId(null);
-    };
-
-    const addSlide = () => {
-        const newSlide = {
-            id: `slide_${Date.now()}`,
-            elements: [],
-            background: '#f1f5f9'
-        };
-        setSlides(prevSlides => [...prevSlides, newSlide]);
-        setCurrentSlideIndex(slides.length);
-    };
-    
-    const setSlideBackground = (color) => {
-        setSlides(prevSlides => prevSlides.map((slide, index) => {
-            if (index !== currentSlideIndex) return slide;
-            return { ...slide, background: color };
-        }));
-    }
-
-    // --- AI Command Handling ---
-
-    const handleAiPrompt = async () => {
-        if (!aiPrompt.trim() || isAiThinking) return;
-
-        setIsAiThinking(true);
-        const userMessage = { role: 'user', text: aiPrompt };
-        setChatHistory(prev => [...prev, userMessage]);
-        
-        const currentSlideData = slides[currentSlideIndex];
-        const contextPrompt = `
-You are an AI presentation assistant. The user wants to modify a presentation slide.
-Analyze the user's request and generate a JSON object with a command and payload to perform the action.
-
-Here is the current slide's data:
-${JSON.stringify(currentSlideData, null, 2)}
-
-Here is the ID of the currently selected element (if any): ${selectedElementId}
-
-Supported commands and their payloads:
-- "ADD_ELEMENT": { "type": "text", "content": "Text content", "props": { ...element properties... } }
-- "UPDATE_STYLE": { "elementId": "id_of_element_to_update", "style": { "fontSize": "24px", "color": "#ff0000", ... } }
-- "UPDATE_CONTENT": { "elementId": "id_of_element_to_update", "content": "New text content" }
-- "DELETE_ELEMENT": { "elementId": "id_of_element_to_delete" }
-- "CHANGE_BACKGROUND": { "color": "#hexcode" }
-- "ADD_SLIDE": {}
-- "NO_OP": { "reason": "Reason for no operation" }
-
-If the user's request is ambiguous about which element to change, and an element is selected, assume they mean the selected element. If no element is selected, you can add a new one or ask for clarification via NO_OP.
-Do not respond with anything other than the JSON command object.
-User Request: "${aiPrompt}"
-`;
-
-        const schema = {
-            type: "OBJECT",
-            properties: {
-                "command": { "type": "STRING" },
-                "payload": { "type": "OBJECT" }
-            }
-        };
-
-        try {
-            const chatHistoryForApi = [{ role: "user", parts: [{ text: contextPrompt }] }];
-            const payload = {
-                contents: chatHistoryForApi,
-                generationConfig: {
-                    responseMimeType: "application/json",
-                    responseSchema: schema,
-                }
-            };
-            const apiKey = "";
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
-
-            const response = await fetch(apiUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-            const result = await response.json();
-            
-            if (result.candidates && result.candidates[0].content && result.candidates[0].content.parts.length > 0) {
-                const aiResponseText = result.candidates[0].content.parts[0].text;
-                const aiCommand = JSON.parse(aiResponseText);
-
-                const botMessage = { role: 'bot', text: `Executing command: ${aiCommand.command}` };
-                setChatHistory(prev => [...prev, botMessage]);
-
-                executeAiCommand(aiCommand);
-            } else {
-                 const errorMessage = { role: 'bot', text: `Sorry, I couldn't understand that. The response was: ${JSON.stringify(result)}` };
-                setChatHistory(prev => [...prev, errorMessage]);
-            }
-        } catch (error) {
-            console.error("AI Error:", error);
-            const errorMessage = { role: 'bot', text: "Sorry, I encountered an error. Please try again." };
-            setChatHistory(prev => [...prev, errorMessage]);
-        } finally {
-            setIsAiThinking(false);
-            setAiPrompt('');
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Slides AI Pro</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
-    };
 
-    const executeAiCommand = (command) => {
-        const { command: action, payload } = command;
-        const targetId = payload.elementId || selectedElementId;
-        
-        switch (action) {
-            case 'ADD_ELEMENT':
-                addElement(payload.type, payload.content, payload.props);
-                break;
-            case 'UPDATE_STYLE':
-                if (targetId) {
-                    updateElementStyle(targetId, payload.style);
-                }
-                break;
-            case 'UPDATE_CONTENT':
-                 if (targetId) {
-                    updateElementContent(targetId, payload.content);
-                }
-                break;
-            case 'DELETE_ELEMENT':
-                 if (targetId) {
-                    deleteElement(targetId);
-                }
-                break;
-            case 'CHANGE_BACKGROUND':
-                setSlideBackground(payload.color);
-                break;
-            case 'ADD_SLIDE':
-                addSlide();
-                break;
-            case 'NO_OP':
-                const noopMessage = { role: 'bot', text: payload.reason || "I couldn't determine an action. Could you be more specific?" };
-                setChatHistory(prev => [...prev, noopMessage]);
-                break;
-            default:
-                const defaultMessage = { role: 'bot', text: `Unknown command: ${action}` };
-                setChatHistory(prev => [...prev, defaultMessage]);
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f8f9fa;
+            color: #212529;
+            height: 100vh;
+            overflow: hidden;
         }
-    };
 
+        .app {
+            display: grid;
+            grid-template-columns: 250px 1fr;
+            grid-template-rows: 60px 1fr;
+            height: 100vh;
+        }
 
-    return (
-        <div className="flex h-screen w-screen bg-gray-100 font-sans">
-            {/* AI Chat Panel */}
-            <div className="w-1/4 max-w-sm h-full flex flex-col bg-white border-r border-gray-200 shadow-md">
-                <div className="p-4 border-b border-gray-200">
-                    <h2 className="text-xl font-bold text-gray-800">AI Assistant</h2>
-                    <p className="text-sm text-gray-500">Describe the changes you want.</p>
+        /* Header */
+        .header {
+            grid-column: 1 / -1;
+            background: white;
+            border-bottom: 1px solid #e9ecef;
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            gap: 20px;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .header-actions {
+            margin-left: auto;
+            display: flex;
+            gap: 10px;
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 8px 16px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5a67d8;
+        }
+
+        .btn-secondary {
+            background: white;
+            color: #495057;
+            border: 1px solid #dee2e6;
+        }
+
+        .btn-secondary:hover {
+            background: #f8f9fa;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            background: white;
+            border-right: 1px solid #e9ecef;
+            overflow-y: auto;
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .slide-list {
+            padding: 10px;
+        }
+
+        .slide-item {
+            background: #f8f9fa;
+            border: 2px solid transparent;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .slide-item:hover {
+            border-color: #667eea;
+            transform: translateX(5px);
+        }
+
+        .slide-item.active {
+            background: #e7e5ff;
+            border-color: #667eea;
+        }
+
+        .slide-number {
+            font-size: 12px;
+            color: #6c757d;
+            margin-bottom: 5px;
+        }
+
+        /* Main Area */
+        .main {
+            display: flex;
+            flex-direction: column;
+            background: #e9ecef;
+        }
+
+        .toolbar {
+            background: white;
+            padding: 10px 20px;
+            border-bottom: 1px solid #e9ecef;
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .toolbar-group {
+            display: flex;
+            gap: 5px;
+            align-items: center;
+            padding-right: 20px;
+            border-right: 1px solid #e9ecef;
+        }
+
+        .toolbar-group:last-child {
+            border-right: none;
+            margin-left: auto;
+            padding-right: 0;
+        }
+
+        .tool-btn {
+            width: 36px;
+            height: 36px;
+            border: 1px solid #dee2e6;
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .tool-btn:hover {
+            background: #f8f9fa;
+            border-color: #667eea;
+        }
+
+        /* Canvas */
+        .canvas-container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+            overflow: auto;
+        }
+
+        .slide-canvas {
+            width: 100%;
+            max-width: 900px;
+            aspect-ratio: 16/9;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            padding: 60px;
+            position: relative;
+        }
+
+        .slide-element {
+            margin-bottom: 20px;
+            padding: 10px;
+            border-radius: 4px;
+            transition: all 0.2s;
+            outline: none;
+            position: relative;
+        }
+
+        .slide-element:hover {
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        .slide-element:focus {
+            background: rgba(102, 126, 234, 0.1);
+            box-shadow: 0 0 0 2px #667eea;
+        }
+
+        .element-controls {
+            position: absolute;
+            top: -30px;
+            right: 0;
+            display: none;
+            gap: 5px;
+            background: white;
+            padding: 5px;
+            border-radius: 6px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .slide-element:hover .element-controls {
+            display: flex;
+        }
+
+        /* AI Assistant */
+        .ai-panel {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 400px;
+            max-height: 500px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            display: none;
+            flex-direction: column;
+        }
+
+        .ai-panel.open {
+            display: flex;
+        }
+
+        .ai-header {
+            padding: 20px;
+            border-bottom: 1px solid #e9ecef;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .ai-messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            max-height: 300px;
+        }
+
+        .ai-message {
+            margin-bottom: 15px;
+            padding: 10px 15px;
+            border-radius: 8px;
+        }
+
+        .ai-message.assistant {
+            background: #f8f9fa;
+        }
+
+        .ai-message.user {
+            background: #e7e5ff;
+            margin-left: 50px;
+        }
+
+        .ai-input-area {
+            padding: 15px;
+            border-top: 1px solid #e9ecef;
+            display: flex;
+            gap: 10px;
+        }
+
+        .ai-input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            outline: none;
+        }
+
+        .ai-trigger {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 56px;
+            height: 56px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+            border: none;
+            color: white;
+            font-size: 24px;
+        }
+
+        .ai-trigger:hover {
+            transform: scale(1.1);
+        }
+
+        .ai-trigger.hidden {
+            display: none;
+        }
+
+        /* Modals */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .template-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .template-card {
+            border: 2px solid #e9ecef;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .template-card:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+        }
+
+        /* Utilities */
+        .hidden { display: none !important; }
+        .mb-10 { margin-bottom: 10px; }
+        .mb-20 { margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">Slides AI Pro</div>
+            <div class="header-actions">
+                <button class="btn btn-secondary" onclick="showTemplates()">Templates</button>
+                <button class="btn btn-secondary" onclick="presentSlides()">Present</button>
+                <button class="btn btn-primary" onclick="exportPresentation()">Export</button>
+            </div>
+        </header>
+
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <button class="btn btn-primary" style="width: 100%" onclick="addNewSlide()">+ New Slide</button>
+            </div>
+            <div class="slide-list" id="slideList"></div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main">
+            <!-- Toolbar -->
+            <div class="toolbar">
+                <div class="toolbar-group">
+                    <button class="tool-btn" onclick="addElement('title')" title="Add Title">H</button>
+                    <button class="tool-btn" onclick="addElement('text')" title="Add Text">T</button>
+                    <button class="tool-btn" onclick="addElement('bullet')" title="Add List">•</button>
                 </div>
-                <div className="flex-grow p-4 overflow-y-auto">
-                    {chatHistory.map((msg, index) => (
-                        <div key={index} className={`flex items-start gap-3 my-4 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                           {msg.role === 'bot' && <div className="p-2 rounded-full bg-indigo-500 text-white"><Bot size={20}/></div>}
-                            <div className={`max-w-xs p-3 rounded-lg ${msg.role === 'user' ? 'bg-indigo-500 text-white rounded-br-none' : 'bg-gray-200 text-gray-800 rounded-bl-none'}`}>
-                                <p className="text-sm">{msg.text}</p>
-                            </div>
-                             {msg.role === 'user' && <div className="p-2 rounded-full bg-gray-200 text-gray-700"><Mic size={20}/></div>}
-                        </div>
-                    ))}
-                     {isAiThinking && (
-                        <div className="flex items-start gap-3 my-4 justify-start">
-                            <div className="p-2 rounded-full bg-indigo-500 text-white"><Bot size={20}/></div>
-                            <div className="p-3 rounded-lg bg-gray-200 text-gray-800 rounded-bl-none">
-                                <div className="flex items-center gap-2">
-                                  <div className="w-2 h-2 bg-indigo-400 rounded-full animate-pulse"></div>
-                                  <div className="w-2 h-2 bg-indigo-400 rounded-full animate-pulse delay-75"></div>
-                                  <div className="w-2 h-2 bg-indigo-400 rounded-full animate-pulse delay-150"></div>
-                                </div>
-                            </div>
-                        </div>
-                    )}
+                <div class="toolbar-group">
+                    <button class="tool-btn" onclick="formatText('bold')" title="Bold"><b>B</b></button>
+                    <button class="tool-btn" onclick="formatText('italic')" title="Italic"><i>I</i></button>
+                    <button class="tool-btn" onclick="formatText('underline')" title="Underline"><u>U</u></button>
                 </div>
-                <div className="p-4 border-t border-gray-200 bg-white">
-                    <div className="relative">
-                        <textarea
-                            value={aiPrompt}
-                            onChange={(e) => setAiPrompt(e.target.value)}
-                            onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), handleAiPrompt())}
-                            className="w-full p-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"
-                            placeholder="e.g., 'Make the title bigger'"
-                            rows={2}
-                            disabled={isAiThinking}
-                        />
-                        <button 
-                            onClick={handleAiPrompt}
-                            disabled={isAiThinking}
-                            className="absolute top-1/2 right-2 -translate-y-1/2 p-1.5 bg-indigo-500 text-white rounded-md hover:bg-indigo-600 disabled:bg-indigo-300 transition-colors"
-                        >
-                           <ArrowBigUp size={20} />
-                        </button>
-                    </div>
+                <div class="toolbar-group">
+                    <span>Slide <span id="currentSlide">1</span> of <span id="totalSlides">1</span></span>
                 </div>
             </div>
 
-            {/* Main Content Area */}
-            <div className="flex-grow flex flex-col">
-                {/* Toolbar */}
-                <div className="flex-shrink-0 bg-white h-16 border-b border-gray-200 flex items-center px-4 justify-between shadow-sm">
-                    <div className="flex items-center gap-2">
-                        <button onClick={() => addElement('text')} className="flex items-center gap-2 px-3 py-2 text-sm font-medium bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition">
-                            <Type size={16}/> Add Text
-                        </button>
-                    </div>
-                     {selectedElement && (
-                        <div className="flex items-center gap-4 bg-white p-2 rounded-lg border border-gray-200">
-                           <input 
-                                type="color"
-                                value={selectedElement.style.color || '#000000'}
-                                onChange={(e) => updateElementStyle(selectedElementId, { color: e.target.value })}
-                                className="w-8 h-8 p-0 border-none rounded cursor-pointer"
-                                title="Text Color"
-                           />
-                           <div className="flex items-center gap-1">
-                                <Palette size={16} className="text-gray-500" />
-                                <input 
-                                    type="color"
-                                    value={selectedElement.style.backgroundColor || '#ffffff'}
-                                    onChange={(e) => updateElementStyle(selectedElementId, { backgroundColor: e.target.value })}
-                                    className="w-8 h-8 p-0 border-none rounded cursor-pointer"
-                                    title="Background Color"
-                                />
-                            </div>
-                           <div className="flex items-center gap-2">
-                                <input 
-                                    type="number" 
-                                    value={parseInt(selectedElement.style.fontSize) || 24}
-                                    onChange={(e) => updateElementStyle(selectedElementId, { fontSize: `${e.target.value}px` })}
-                                    className="w-16 p-1 border border-gray-300 rounded-md text-sm text-center"
-                                    title="Font Size"
-                                />
-                           </div>
-                           <button onClick={() => deleteElement(selectedElementId)} className="p-2 text-red-500 hover:bg-red-100 rounded-md transition">
-                                <Trash2 size={16} />
-                           </button>
-                        </div>
-                    )}
-                     <div/>
-                </div>
+            <!-- Canvas -->
+            <div class="canvas-container">
+                <div class="slide-canvas" id="canvas"></div>
+            </div>
+        </main>
+    </div>
 
-                {/* Canvas */}
-                <div className="flex-grow flex items-center justify-center p-8 bg-gray-200 overflow-auto">
-                    <div 
-                      ref={canvasRef}
-                      className="w-[800px] h-[600px] bg-white shadow-2xl relative"
-                      style={{ background: slides[currentSlideIndex]?.background || '#ffffff' }}
-                      onClick={(e) => e.target === canvasRef.current && setSelectedElementId(null)}
-                      >
-                       {slides[currentSlideIndex]?.elements.map(el => (
-                           <SlideElement
-                                key={el.id}
-                                element={el}
-                                isSelected={selectedElementId === el.id}
-                                onSelect={() => setSelectedElementId(el.id)}
-                                onUpdate={updateElementPosition}
-                           />
-                       ))}
-                    </div>
-                </div>
-
-                {/* Slide Previews */}
-                <div className="flex-shrink-0 bg-white h-28 border-t border-gray-200 flex items-center p-4 gap-4 shadow-inner">
-                    {slides.map((slide, index) => (
-                       <div 
-                            key={slide.id}
-                            onClick={() => setCurrentSlideIndex(index)}
-                            className={`w-32 h-24 rounded border-2 cursor-pointer transition-all flex-shrink-0
-                                ${index === currentSlideIndex ? 'border-indigo-500 shadow-md' : 'border-gray-300 hover:border-indigo-400'}
-                            `}
-                       >
-                            <div 
-                                className="w-full h-full scale-[0.16] origin-top-left"
-                                style={{ background: slide.background }}
-                            >
-                                {slide.elements.map(el => (
-                                    <div key={el.id} style={{
-                                        position: 'absolute',
-                                        left: el.x,
-                                        top: el.y,
-                                        width: el.width,
-                                        height: el.height,
-                                        ...el.style,
-                                        backgroundColor: el.style.backgroundColor || 'transparent'
-                                    }}>{el.type === 'text' && el.content}</div>
-                                ))}
-                            </div>
-                       </div>
-                    ))}
-                    <button onClick={addSlide} className="w-32 h-24 rounded border-2 border-dashed border-gray-400 text-gray-500 flex flex-col items-center justify-center hover:bg-gray-50 hover:border-indigo-500 hover:text-indigo-500 transition">
-                       <Plus size={24} />
-                       <span className="text-sm mt-1">New Slide</span>
-                    </button>
-                </div>
+    <!-- AI Assistant -->
+    <button class="ai-trigger" id="aiTrigger" onclick="toggleAI()">🤖</button>
+    
+    <div class="ai-panel" id="aiPanel">
+        <div class="ai-header">
+            <h3>AI Assistant</h3>
+            <button class="btn btn-secondary" onclick="toggleAI()">×</button>
+        </div>
+        <div class="ai-messages" id="aiMessages">
+            <div class="ai-message assistant">
+                Hi! I can help you create presentations. Try:
+                <br><br>
+                • "Create a presentation about..."<br>
+                • "Add a title saying..."<br>
+                • "Change background to blue"<br>
+                • "Add bullet points"
             </div>
         </div>
-    );
-}
+        <div class="ai-input-area">
+            <input type="text" class="ai-input" id="aiInput" placeholder="Type your command..." onkeypress="if(event.key==='Enter') sendAICommand()">
+            <button class="btn btn-primary" onclick="sendAICommand()">Send</button>
+        </div>
+    </div>
 
-
-// --- Sub-Components ---
-
-function SlideElement({ element, isSelected, onSelect, onUpdate }) {
-    const [isDragging, setIsDragging] = useState(false);
-    const dragStartPos = useRef({ x: 0, y: 0 });
-    const elementStartPos = useRef({ x: 0, y: 0 });
-
-    const handleMouseDown = (e) => {
-        // Prevent drag on content editable
-        if (e.target.isContentEditable) return;
-        
-        e.stopPropagation();
-        onSelect();
-        setIsDragging(true);
-        dragStartPos.current = { x: e.clientX, y: e.clientY };
-        elementStartPos.current = { x: element.x, y: element.y };
-        
-        window.addEventListener('mousemove', handleMouseMove);
-        window.addEventListener('mouseup', handleMouseUp);
-    };
-
-    const handleMouseMove = (e) => {
-        const dx = e.clientX - dragStartPos.current.x;
-        const dy = e.clientY - dragStartPos.current.y;
-        onUpdate(element.id, { x: elementStartPos.current.x + dx, y: elementStartPos.current.y + dy });
-    };
-
-    const handleMouseUp = () => {
-        setIsDragging(false);
-        window.removeEventListener('mousemove', handleMouseMove);
-        window.removeEventListener('mouseup', handleMouseUp);
-    };
-
-    const style = {
-        left: `${element.x}px`,
-        top: `${element.y}px`,
-        width: `${element.width}px`,
-        height: `${element.height}px`,
-        ...element.style,
-        position: 'absolute',
-        cursor: isDragging ? 'grabbing' : 'grab',
-        outline: isSelected ? '2px solid #4f46e5' : 'none',
-        outlineOffset: '2px',
-        transition: 'outline 0.2s',
-        backgroundColor: element.style.backgroundColor || 'transparent',
-    };
-
-    if (element.type === 'text') {
-        return (
-            <div 
-                style={style}
-                onMouseDown={handleMouseDown}
-                onClick={(e) => e.stopPropagation()}
-            >
-                <div
-                    contentEditable
-                    suppressContentEditableWarning
-                    onBlur={(e) => onUpdate(element.id, { content: e.target.innerText })}
-                    style={{ width: '100%', height: '100%', outline: 'none', padding: '5px' }}
-                >
-                    {element.content}
+    <!-- Templates Modal -->
+    <div class="modal" id="templateModal">
+        <div class="modal-content">
+            <h2 class="mb-20">Choose a Template</h2>
+            <div class="template-grid">
+                <div class="template-card" onclick="applyTemplate('business')">
+                    <div style="font-size: 48px; margin-bottom: 10px;">💼</div>
+                    <h4>Business</h4>
+                </div>
+                <div class="template-card" onclick="applyTemplate('education')">
+                    <div style="font-size: 48px; margin-bottom: 10px;">🎓</div>
+                    <h4>Education</h4>
+                </div>
+                <div class="template-card" onclick="applyTemplate('creative')">
+                    <div style="font-size: 48px; margin-bottom: 10px;">🎨</div>
+                    <h4>Creative</h4>
                 </div>
             </div>
-        );
-    }
-    return null;
-}
+            <button class="btn btn-secondary" onclick="hideTemplates()" style="margin-top: 20px;">Cancel</button>
+        </div>
+    </div>
+
+    <script>
+        // Presentation data
+        let presentation = {
+            slides: [{
+                id: 1,
+                elements: [{
+                    type: 'title',
+                    content: 'Welcome to Slides AI Pro',
+                    style: 'font-size: 48px; font-weight: bold; text-align: center; margin-bottom: 20px;'
+                }, {
+                    type: 'text',
+                    content: 'Create amazing presentations with AI assistance',
+                    style: 'font-size: 24px; text-align: center; color: #6c757d;'
+                }]
+            }],
+            currentSlide: 0
+        };
+
+        let selectedElement = null;
+
+        // Initialize
+        window.onload = function() {
+            renderSlideList();
+            renderSlide();
+            updateSlideCounter();
+        };
+
+        // Slide Management
+        function renderSlideList() {
+            const slideList = document.getElementById('slideList');
+            slideList.innerHTML = '';
+            
+            presentation.slides.forEach((slide, index) => {
+                const slideItem = document.createElement('div');
+                slideItem.className = `slide-item ${index === presentation.currentSlide ? 'active' : ''}`;
+                slideItem.onclick = () => selectSlide(index);
+                
+                const firstElement = slide.elements[0];
+                const title = firstElement ? firstElement.content.substring(0, 30) + '...' : 'Empty Slide';
+                
+                slideItem.innerHTML = `
+                    <div class="slide-number">SLIDE ${index + 1}</div>
+                    <div>${title}</div>
+                `;
+                
+                slideList.appendChild(slideItem);
+            });
+        }
+
+        function renderSlide() {
+            const canvas = document.getElementById('canvas');
+            canvas.innerHTML = '';
+            
+            const currentSlide = presentation.slides[presentation.currentSlide];
+            
+            currentSlide.elements.forEach((element, index) => {
+                const el = document.createElement('div');
+                el.className = 'slide-element';
+                el.contentEditable = true;
+                el.style.cssText = element.style;
+                el.innerHTML = element.content;
+                el.onclick = () => selectedElement = index;
+                el.onblur = () => updateElement(index, el.innerHTML);
+                
+                // Add controls
+                const controls = document.createElement('div');
+                controls.className = 'element-controls';
+                controls.innerHTML = `
+                    <button class="tool-btn" onclick="deleteElement(${index})">🗑️</button>
+                `;
+                el.appendChild(controls);
+                
+                canvas.appendChild(el);
+            });
+        }
+
+        function selectSlide(index) {
+            presentation.currentSlide = index;
+            renderSlideList();
+            renderSlide();
+            updateSlideCounter();
+        }
+
+        function addNewSlide() {
+            presentation.slides.push({
+                id: Date.now(),
+                elements: [{
+                    type: 'title',
+                    content: 'New Slide',
+                    style: 'font-size: 48px; font-weight: bold; text-align: center;'
+                }]
+            });
+            selectSlide(presentation.slides.length - 1);
+        }
+
+        function updateSlideCounter() {
+            document.getElementById('currentSlide').textContent = presentation.currentSlide + 1;
+            document.getElementById('totalSlides').textContent = presentation.slides.length;
+        }
+
+        // Element Management
+        function addElement(type) {
+            const styles = {
+                title: 'font-size: 36px; font-weight: bold; margin-bottom: 20px;',
+                text: 'font-size: 18px; line-height: 1.6; margin-bottom: 15px;',
+                bullet: 'font-size: 18px; line-height: 1.8; margin-bottom: 15px; padding-left: 20px;'
+            };
+            
+            const contents = {
+                title: 'New Title',
+                text: 'Enter your text here...',
+                bullet: '• Point 1<br>• Point 2<br>• Point 3'
+            };
+            
+            presentation.slides[presentation.currentSlide].elements.push({
+                type: type,
+                content: contents[type],
+                style: styles[type]
+            });
+            
+            renderSlide();
+        }
+
+        function updateElement(index, content) {
+            presentation.slides[presentation.currentSlide].elements[index].content = content;
+        }
+
+        function deleteElement(index) {
+            presentation.slides[presentation.currentSlide].elements.splice(index, 1);
+            renderSlide();
+        }
+
+        function formatText(command) {
+            document.execCommand(command, false, null);
+        }
+
+        // Templates
+        function showTemplates() {
+            document.getElementById('templateModal').classList.add('show');
+        }
+
+        function hideTemplates() {
+            document.getElementById('templateModal').classList.remove('show');
+        }
+
+        function applyTemplate(templateName) {
+            const templates = {
+                business: {
+                    slides: [{
+                        elements: [{
+                            type: 'title',
+                            content: 'Business Presentation',
+                            style: 'font-size: 56px; font-weight: bold; text-align: center; color: #212529; margin-bottom: 20px;'
+                        }, {
+                            type: 'text',
+                            content: 'Professional Template for Business',
+                            style: 'font-size: 24px; text-align: center; color: #6c757d;'
+                        }]
+                    }, {
+                        elements: [{
+                            type: 'title',
+                            content: 'Our Services',
+                            style: 'font-size: 48px; font-weight: bold; margin-bottom: 30px;'
+                        }, {
+                            type: 'bullet',
+                            content: '• Consulting Services<br>• Project Management<br>• Business Analysis<br>• Strategic Planning',
+                            style: 'font-size: 24px; line-height: 2; padding-left: 20px;'
+                        }]
+                    }]
+                },
+                education: {
+                    slides: [{
+                        elements: [{
+                            type: 'title',
+                            content: 'Educational Presentation',
+                            style: 'font-size: 56px; font-weight: bold; text-align: center; color: #28a745; margin-bottom: 20px;'
+                        }, {
+                            type: 'text',
+                            content: 'Learning Made Easy',
+                            style: 'font-size: 24px; text-align: center; color: #6c757d;'
+                        }]
+                    }]
+                },
+                creative: {
+                    slides: [{
+                        elements: [{
+                            type: 'title',
+                            content: 'Creative Presentation',
+                            style: 'font-size: 64px; font-weight: bold; text-align: center; background: linear-gradient(45deg, #667eea, #764ba2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 20px;'
+                        }, {
+                            type: 'text',
+                            content: 'Think Different, Create Amazing',
+                            style: 'font-size: 28px; text-align: center; color: #764ba2;'
+                        }]
+                    }]
+                }
+            };
+            
+            if (templates[templateName]) {
+                presentation.slides = templates[templateName].slides;
+                presentation.currentSlide = 0;
+                renderSlideList();
+                renderSlide();
+                updateSlideCounter();
+                hideTemplates();
+            }
+        }
+
+        // AI Assistant
+        function toggleAI() {
+            const panel = document.getElementById('aiPanel');
+            const trigger = document.getElementById('aiTrigger');
+            
+            if (panel.classList.contains('open')) {
+                panel.classList.remove('open');
+                trigger.classList.remove('hidden');
+            } else {
+                panel.classList.add('open');
+                trigger.classList.add('hidden');
+                document.getElementById('aiInput').focus();
+            }
+        }
+
+        function sendAICommand() {
+            const input = document.getElementById('aiInput');
+            const command = input.value.trim();
+            
+            if (!command) return;
+            
+            // Add user message
+            addAIMessage(command, 'user');
+            
+            // Process command
+            processCommand(command);
+            
+            // Clear input
+            input.value = '';
+        }
+
+        function addAIMessage(message, sender) {
+            const messagesContainer = document.getElementById('aiMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `ai-message ${sender}`;
+            messageDiv.innerHTML = message;
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        function processCommand(command) {
+            const lowerCommand = command.toLowerCase();
+            let response = '';
+            
+            if (lowerCommand.includes('create') && lowerCommand.includes('presentation')) {
+                // Create new presentation
+                const topicMatch = command.match(/about (.+)/i);
+                const topic = topicMatch ? topicMatch[1] : 'Your Topic';
+                
+                presentation.slides = [
+                    {
+                        elements: [{
+                            type: 'title',
+                            content: topic,
+                            style: 'font-size: 56px; font-weight: bold; text-align: center; margin-bottom: 30px;'
+                        }, {
+                            type: 'text',
+                            content: new Date().toLocaleDateString(),
+                            style: 'font-size: 24px; text-align: center; color: #6c757d;'
+                        }]
+                    },
+                    {
+                        elements: [{
+                            type: 'title',
+                            content: 'Introduction',
+                            style: 'font-size: 48px; font-weight: bold; margin-bottom: 30px;'
+                        }, {
+                            type: 'text',
+                            content: 'Add your introduction content here...',
+                            style: 'font-size: 20px; line-height: 1.6;'
+                        }]
+                    },
+                    {
+                        elements: [{
+                            type: 'title',
+                            content: 'Key Points',
+                            style: 'font-size: 48px; font-weight: bold; margin-bottom: 30px;'
+                        }, {
+                            type: 'bullet',
+                            content: '• First key point<br>• Second key point<br>• Third key point',
+                            style: 'font-size: 24px; line-height: 2; padding-left: 20px;'
+                        }]
+                    },
+                    {
+                        elements: [{
+                            type: 'title',
+                            content: 'Thank You',
+                            style: 'font-size: 64px; font-weight: bold; text-align: center;'
+                        }]
+                    }
+                ];
+                
+                presentation.currentSlide = 0;
+                renderSlideList();
+                renderSlide();
+                updateSlideCounter();
+                
+                response = `Created a presentation about "${topic}" with 4 slides!`;
+                
+            } else if (lowerCommand.includes('add') && lowerCommand.includes('title')) {
+                const titleMatch = command.match(/["']([^"']+)["']/) || command.match(/saying (.+)/i);
+                const title = titleMatch ? titleMatch[1] : 'New Title';
+                
+                addElement('title');
+                const lastElement = presentation.slides[presentation.currentSlide].elements.length - 1;
+                presentation.slides[presentation.currentSlide].elements[lastElement].content = title;
+                renderSlide();
+                
+                response = `Added title: "${title}"`;
+                
+            } else if (lowerCommand.includes('add') && lowerCommand.includes('bullet')) {
+                addElement('bullet');
+                response = 'Added bullet points';
+                
+            } else if (lowerCommand.includes('change') && lowerCommand.includes('background')) {
+                const canvas = document.getElementById('canvas');
+                if (lowerCommand.includes('blue')) {
+                    canvas.style.background = '#e3f2fd';
+                } else if (lowerCommand.includes('gradient')) {
+                    canvas.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+                } else if (lowerCommand.includes('dark')) {
+                    canvas.style.background = '#212529';
+                    canvas.style.color = 'white';
+                }
+                response = 'Changed background';
+                
+            } else if (lowerCommand.includes('next') || lowerCommand.includes('slide')) {
+                if (presentation.currentSlide < presentation.slides.length - 1) {
+                    selectSlide(presentation.currentSlide + 1);
+                    response = 'Moved to next slide';
+                } else {
+                    response = 'Already on last slide';
+                }
+                
+            } else {
+                response = 'I didn\'t understand that command. Try: "Create presentation about...", "Add title saying...", or "Change background to blue"';
+            }
+            
+            // Add AI response
+            setTimeout(() => {
+                addAIMessage(response, 'assistant');
+            }, 500);
+        }
+
+        // Export/Present
+        function exportPresentation() {
+            let html = `<!DOCTYPE html><html><head><title>Presentation</title>
+            <style>
+                body { font-family: Arial, sans-serif; margin: 0; padding: 0; }
+                .slide { width: 100vw; height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 50px; page-break-after: always; }
+            </style></head><body>`;
+            
+            presentation.slides.forEach(slide => {
+                html += '<div class="slide">';
+                slide.elements.forEach(element => {
+                    html += `<div style="${element.style}">${element.content}</div>`;
+                });
+                html += '</div>';
+            });
+            
+            html += '</body></html>';
+            
+            const blob = new Blob([html], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'presentation.html';
+            a.click();
+        }
+
+        function presentSlides() {
+            const win = window.open('', '_blank');
+            let html = `<!DOCTYPE html><html><head><title>Presentation</title>
+            <style>
+                body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: #000; }
+                .slide { width: 100vw; height: 100vh; display: none; flex-direction: column; justify-content: center; align-items: center; padding: 50px; background: white; }
+                .slide.active { display: flex; }
+                .controls { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); }
+                button { padding: 10px 20px; margin: 0 10px; }
+            </style></head><body>`;
+            
+            presentation.slides.forEach((slide, index) => {
+                html += `<div class="slide ${index === 0 ? 'active' : ''}" id="slide${index}">`;
+                slide.elements.forEach(element => {
+                    html += `<div style="${element.style}">${element.content}</div>`;
+                });
+                html += '</div>';
+            });
+            
+            html += `
+            <div class="controls">
+                <button onclick="prevSlide()">Previous</button>
+                <span id="slideNum">1 / ${presentation.slides.length}</span>
+                <button onclick="nextSlide()">Next</button>
+            </div>
+            <script>
+                let current = 0;
+                const total = ${presentation.slides.length};
+                function showSlide(n) {
+                    document.querySelectorAll('.slide').forEach(s => s.classList.remove('active'));
+                    document.getElementById('slide' + n).classList.add('active');
+                    document.getElementById('slideNum').textContent = (n + 1) + ' / ' + total;
+                }
+                function nextSlide() {
+                    if (current < total - 1) {
+                        current++;
+                        showSlide(current);
+                    }
+                }
+                function prevSlide() {
+                    if (current > 0) {
+                        current--;
+                        showSlide(current);
+                    }
+                }
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'ArrowRight') nextSlide();
+                    if (e.key === 'ArrowLeft') prevSlide();
+                });
+            </script>
+            </body></html>`;
+            
+            win.document.write(html);
+            win.document.close();
+        }
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.target.tagName !== 'INPUT' && e.target.contentEditable !== 'true') {
+                if (e.key === 'ArrowLeft' && presentation.currentSlide > 0) {
+                    selectSlide(presentation.currentSlide - 1);
+                } else if (e.key === 'ArrowRight' && presentation.currentSlide < presentation.slides.length - 1) {
+                    selectSlide(presentation.currentSlide + 1);
+                }
+            }
+        });
+    </script>
+</body>
+</html>
