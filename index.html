@@ -1,1543 +1,503 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Slides AI Pro - Advanced Presentation Creator</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        :root {
-            --primary: #6366f1;
-            --primary-dark: #4f46e5;
-            --primary-light: #818cf8;
-            --secondary: #06b6d4;
-            --accent: #f59e0b;
-            --success: #10b981;
-            --danger: #ef4444;
-            --background: #ffffff;
-            --surface: #f8fafc;
-            --border: #e2e8f0;
-            --text: #1e293b;
-            --text-secondary: #64748b;
-            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-            --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
-            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
-            --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1);
-            --radius: 12px;
-        }
-
-        body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: var(--background);
-            color: var(--text);
-            height: 100vh;
-            overflow: hidden;
-            line-height: 1.5;
-        }
-
-        /* Layout */
-        .app-layout {
-            display: grid;
-            grid-template-columns: 280px 1fr;
-            grid-template-rows: 60px 1fr;
-            height: 100vh;
-        }
-
-        /* Header */
-        .header {
-            grid-column: 1 / -1;
-            background: white;
-            border-bottom: 1px solid var(--border);
-            display: flex;
-            align-items: center;
-            padding: 0 24px;
-            gap: 24px;
-            z-index: 100;
-        }
-
-        .logo {
-            font-size: 24px;
-            font-weight: 700;
-            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .header-actions {
-            margin-left: auto;
-            display: flex;
-            gap: 12px;
-            align-items: center;
-        }
-
-        /* Buttons */
-        .btn {
-            padding: 8px 16px;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.2s;
-            border: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .btn-primary {
-            background: var(--primary);
-            color: white;
-        }
-
-        .btn-primary:hover {
-            background: var(--primary-dark);
-            transform: translateY(-1px);
-            box-shadow: var(--shadow);
-        }
-
-        .btn-secondary {
-            background: var(--surface);
-            color: var(--text);
-            border: 1px solid var(--border);
-        }
-
-        .btn-secondary:hover {
-            background: var(--border);
-        }
-
-        .btn-icon {
-            padding: 8px;
-            width: 36px;
-            height: 36px;
-            justify-content: center;
-        }
-
-        /* Sidebar */
-        .sidebar {
-            background: var(--surface);
-            border-right: 1px solid var(--border);
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-        }
-
-        .sidebar-section {
-            padding: 16px;
-            border-bottom: 1px solid var(--border);
-        }
-
-        .sidebar-title {
-            font-size: 12px;
-            font-weight: 600;
-            text-transform: uppercase;
-            color: var(--text-secondary);
-            margin-bottom: 12px;
-            letter-spacing: 0.05em;
-        }
-
-        .slides-container {
-            flex: 1;
-            overflow-y: auto;
-            padding: 16px;
-        }
-
-        .slide-item {
-            background: white;
-            border: 2px solid var(--border);
-            border-radius: var(--radius);
-            padding: 16px;
-            margin-bottom: 12px;
-            cursor: pointer;
-            transition: all 0.2s;
-            position: relative;
-        }
-
-        .slide-item:hover {
-            border-color: var(--primary-light);
-            box-shadow: var(--shadow);
-            transform: translateX(4px);
-        }
-
-        .slide-item.active {
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-        }
-
-        .slide-number {
-            font-size: 11px;
-            font-weight: 600;
-            color: var(--text-secondary);
-            margin-bottom: 4px;
-        }
-
-        .slide-preview {
-            font-size: 14px;
-            font-weight: 500;
-            color: var(--text);
-            margin-bottom: 4px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .slide-meta {
-            font-size: 12px;
-            color: var(--text-secondary);
-        }
-
-        .slide-actions {
-            position: absolute;
-            top: 8px;
-            right: 8px;
-            display: none;
-            gap: 4px;
-        }
-
-        .slide-item:hover .slide-actions {
-            display: flex;
-        }
-
-        /* Main Content */
-        .main-content {
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            background: #f1f5f9;
-        }
-
-        /* Editor Toolbar */
-        .editor-toolbar {
-            background: white;
-            border-bottom: 1px solid var(--border);
-            padding: 12px 24px;
-            display: flex;
-            align-items: center;
-            gap: 16px;
-            flex-wrap: wrap;
-        }
-
-        .toolbar-group {
-            display: flex;
-            gap: 8px;
-            align-items: center;
-            padding-right: 16px;
-            border-right: 1px solid var(--border);
-        }
-
-        .toolbar-group:last-child {
-            border-right: none;
-            margin-left: auto;
-            padding-right: 0;
-        }
-
-        .toolbar-btn {
-            width: 32px;
-            height: 32px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: all 0.2s;
-            background: transparent;
-            border: none;
-            color: var(--text-secondary);
-            position: relative;
-        }
-
-        .toolbar-btn:hover {
-            background: var(--surface);
-            color: var(--text);
-        }
-
-        .toolbar-btn.active {
-            background: var(--primary);
-            color: white;
-        }
-
-        /* Color Picker */
-        .color-picker-dropdown {
-            position: absolute;
-            top: 100%;
-            left: 0;
-            background: white;
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 8px;
-            display: none;
-            grid-template-columns: repeat(8, 1fr);
-            gap: 4px;
-            box-shadow: var(--shadow-lg);
-            z-index: 1000;
-        }
-
-        .color-picker-dropdown.show {
-            display: grid;
-        }
-
-        .color-swatch {
-            width: 24px;
-            height: 24px;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: transform 0.2s;
-        }
-
-        .color-swatch:hover {
-            transform: scale(1.2);
-        }
-
-        /* Font Size Selector */
-        .font-size-selector {
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            background: var(--surface);
-            border-radius: 6px;
-            padding: 4px;
-        }
-
-        .font-size-btn {
-            width: 24px;
-            height: 24px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border: none;
-            background: transparent;
-            cursor: pointer;
-            border-radius: 4px;
-            font-size: 12px;
-            color: var(--text-secondary);
-        }
-
-        .font-size-btn:hover {
-            background: var(--border);
-        }
-
-        .font-size-display {
-            min-width: 40px;
-            text-align: center;
-            font-size: 12px;
-            font-weight: 500;
-        }
-
-        /* Canvas Area */
-        .canvas-area {
-            flex: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 40px;
-            overflow: auto;
-            position: relative;
-        }
-
-        .slide-canvas {
-            width: 100%;
-            max-width: 960px;
-            aspect-ratio: 16/9;
-            background: white;
-            border-radius: 16px;
-            box-shadow: var(--shadow-xl);
-            padding: 80px;
-            display: flex;
-            flex-direction: column;
-            gap: 24px;
-            position: relative;
-            overflow: hidden;
-            transition: all 0.3s;
-        }
-
-        .slide-canvas.layout-two-column {
-            flex-direction: row;
-            gap: 40px;
-        }
-
-        .slide-canvas.layout-two-column > * {
-            flex: 1;
-        }
-
-        .slide-canvas.layout-title-only {
-            justify-content: center;
-            align-items: center;
-            text-align: center;
-        }
-
-        /* Slide Elements */
-        .slide-element {
-            position: relative;
-            min-height: 40px;
-            transition: all 0.2s;
-            padding: 8px;
-            border-radius: 4px;
-            outline: none;
-        }
-
-        .slide-element.dragging {
-            opacity: 0.5;
-            cursor: move;
-        }
-
-        .slide-element.selected {
-            box-shadow: 0 0 0 2px var(--primary);
-        }
-
-        .slide-element.title {
-            font-size: 48px;
-            font-weight: 700;
-            color: var(--text);
-            line-height: 1.2;
-        }
-
-        .slide-element.subtitle {
-            font-size: 28px;
-            font-weight: 600;
-            color: var(--text-secondary);
-            line-height: 1.3;
-        }
-
-        .slide-element.text {
-            font-size: 20px;
-            color: var(--text);
-            line-height: 1.6;
-        }
-
-        .slide-element.bullet-list {
-            font-size: 20px;
-            color: var(--text);
-            line-height: 1.8;
-            padding-left: 24px;
-        }
-
-        .slide-element.bullet-list li {
-            margin-bottom: 12px;
-            list-style: none;
-            position: relative;
-        }
-
-        .slide-element.bullet-list li::before {
-            content: "•";
-            position: absolute;
-            left: -20px;
-            color: var(--primary);
-            font-weight: bold;
-        }
-
-        .slide-element.quote {
-            font-size: 24px;
-            font-style: italic;
-            color: var(--text-secondary);
-            border-left: 4px solid var(--primary);
-            padding-left: 24px;
-            margin: 20px 0;
-        }
-
-        .slide-element.code {
-            font-family: 'Fira Code', monospace;
-            font-size: 16px;
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 16px;
-            overflow-x: auto;
-        }
-
-        .slide-element.image-container {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 200px;
-            background: var(--surface);
-            border: 2px dashed var(--border);
-            border-radius: 8px;
-            position: relative;
-        }
-
-        .slide-element.chart-container {
-            min-height: 300px;
-            background: var(--surface);
-            border-radius: 8px;
-            padding: 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .slide-element:hover {
-            background: rgba(99, 102, 241, 0.05);
-        }
-
-        .element-placeholder {
-            color: var(--text-secondary);
-            font-style: italic;
-        }
-
-        .element-controls {
-            position: absolute;
-            top: -32px;
-            right: 0;
-            display: none;
-            gap: 4px;
-            background: white;
-            padding: 4px;
-            border-radius: 6px;
-            box-shadow: var(--shadow);
-        }
-
-        .slide-element:hover .element-controls {
-            display: flex;
-        }
-
-        /* Animations */
-        .animation-fadeIn {
-            animation: fadeIn 0.5s ease;
-        }
-
-        .animation-slideIn {
-            animation: slideIn 0.5s ease;
-        }
-
-        .animation-zoomIn {
-            animation: zoomIn 0.5s ease;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-
-        @keyframes slideIn {
-            from { transform: translateX(-50px); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
-        }
-
-        @keyframes zoomIn {
-            from { transform: scale(0.8); opacity: 0; }
-            to { transform: scale(1); opacity: 1; }
-        }
-
-        /* AI Assistant */
-        .ai-assistant {
-            position: fixed;
-            bottom: 24px;
-            right: 24px;
-            width: 480px;
-            max-width: calc(100vw - 48px);
-            background: white;
-            border-radius: 16px;
-            box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1);
-            transform: translateY(calc(100% + 40px));
-            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            z-index: 1000;
-            display: flex;
-            flex-direction: column;
-            max-height: 80vh;
-        }
-
-        .ai-assistant.open {
-            transform: translateY(0);
-        }
-
-        .ai-header {
-            padding: 20px 24px;
-            border-bottom: 1px solid var(--border);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .ai-header-title {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .ai-status {
-            width: 8px;
-            height: 8px;
-            background: #10b981;
-            border-radius: 50%;
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
-
-        .ai-messages {
-            flex: 1;
-            overflow-y: auto;
-            padding: 24px;
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-            min-height: 300px;
-        }
-
-        .ai-message {
-            display: flex;
-            gap: 12px;
-            animation: messageSlide 0.3s ease;
-        }
-
-        @keyframes messageSlide {
-            from {
-                opacity: 0;
-                transform: translateY(10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .ai-avatar {
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 14px;
-            font-weight: 600;
-            flex-shrink: 0;
-        }
-
-        .ai-avatar.assistant {
-            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-            color: white;
-        }
-
-        .ai-avatar.user {
-            background: var(--surface);
-            color: var(--text);
-        }
-
-        .ai-content {
-            flex: 1;
-            background: var(--surface);
-            padding: 12px 16px;
-            border-radius: 12px;
-            font-size: 14px;
-            line-height: 1.5;
-        }
-
-        .user-message .ai-content {
-            background: var(--primary);
-            color: white;
-        }
-
-        .ai-suggestions {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-            margin-top: 8px;
-        }
-
-        .suggestion-chip {
-            padding: 6px 12px;
-            background: white;
-            border: 1px solid var(--border);
-            border-radius: 20px;
-            font-size: 12px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .suggestion-chip:hover {
-            background: var(--primary);
-            color: white;
-            border-color: var(--primary);
-        }
-
-        .ai-input-area {
-            padding: 16px 24px;
-            border-top: 1px solid var(--border);
-        }
-
-        .ai-input-wrapper {
-            display: flex;
-            gap: 12px;
-            align-items: flex-end;
-        }
-
-        .ai-input {
-            flex: 1;
-            padding: 12px 16px;
-            border: 1px solid var(--border);
-            border-radius: 24px;
-            font-size: 14px;
-            transition: all 0.2s;
-            background: var(--surface);
-            resize: none;
-            min-height: 44px;
-            max-height: 120px;
-            overflow-y: auto;
-        }
-
-        .ai-input:focus {
-            outline: none;
-            border-color: var(--primary);
-            background: white;
-        }
-
-        /* AI Trigger Button */
-        .ai-trigger {
-            position: fixed;
-            bottom: 24px;
-            right: 24px;
-            width: 56px;
-            height: 56px;
-            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            box-shadow: 0 10px 15px -3px rgba(99, 102, 241, 0.3);
-            transition: all 0.3s;
-            z-index: 999;
-        }
-
-        .ai-trigger:hover {
-            transform: scale(1.05);
-            box-shadow: 0 20px 25px -5px rgba(99, 102, 241, 0.4);
-        }
-
-        .ai-trigger.hidden {
-            transform: scale(0);
-            opacity: 0;
-        }
-
-        /* Loading Animation */
-        .typing-indicator {
-            display: flex;
-            gap: 4px;
-            padding: 8px 12px;
-        }
-
-        .typing-dot {
-            width: 8px;
-            height: 8px;
-            background: var(--text-secondary);
-            border-radius: 50%;
-            animation: typing 1.4s infinite;
-        }
-
-        .typing-dot:nth-child(2) {
-            animation-delay: 0.2s;
-        }
-
-        .typing-dot:nth-child(3) {
-            animation-delay: 0.4s;
-        }
-
-        @keyframes typing {
-            0%, 60%, 100% {
-                opacity: 0.3;
-                transform: translateY(0);
-            }
-            30% {
-                opacity: 1;
-                transform: translateY(-10px);
-            }
-        }
-
-        /* Transitions */
-        .fade-in {
-            animation: fadeIn 0.3s ease;
-        }
-
-        /* Icons */
-        .icon {
-            width: 20px;
-            height: 20px;
-            stroke: currentColor;
-            stroke-width: 2;
-            fill: none;
-        }
-
-        /* Templates Modal */
-        .templates-modal {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.5);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            z-index: 2000;
-        }
-
-        .templates-modal.show {
-            display: flex;
-        }
-
-        .templates-content {
-            background: white;
-            border-radius: 16px;
-            padding: 32px;
-            max-width: 800px;
-            max-height: 80vh;
-            overflow-y: auto;
-            box-shadow: var(--shadow-xl);
-        }
-
-        .templates-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 16px;
-            margin-top: 24px;
-        }
-
-        .template-card {
-            border: 2px solid var(--border);
-            border-radius: 12px;
-            padding: 20px;
-            cursor: pointer;
-            transition: all 0.2s;
-            text-align: center;
-        }
-
-        .template-card:hover {
-            border-color: var(--primary);
-            transform: translateY(-4px);
-            box-shadow: var(--shadow);
-        }
-
-        .template-icon {
-            font-size: 48px;
-            margin-bottom: 12px;
-        }
-
-        .template-name {
-            font-weight: 600;
-            margin-bottom: 4px;
-        }
-
-        .template-description {
-            font-size: 12px;
-            color: var(--text-secondary);
-        }
-
-        /* Progress Bar */
-        .progress-bar {
-            position: fixed;
-            top: 60px;
-            left: 0;
-            right: 0;
-            height: 3px;
-            background: var(--surface);
-            z-index: 1000;
-            display: none;
-        }
-
-        .progress-bar.show {
-            display: block;
-        }
-
-        .progress-fill {
-            height: 100%;
-            background: linear-gradient(90deg, var(--primary) 0%, var(--secondary) 100%);
-            width: 0;
-            transition: width 0.3s ease;
-        }
-
-        /* Presenter Notes */
-        .presenter-notes {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: rgba(0, 0, 0, 0.8);
-            color: white;
-            padding: 16px;
-            font-size: 14px;
-            display: none;
-            max-height: 150px;
-            overflow-y: auto;
-        }
-
-        .slide-canvas.show-notes .presenter-notes {
-            display: block;
-        }
-
-        /* Animation Preview */
-        .animation-preview {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: white;
-            padding: 40px;
-            border-radius: 16px;
-            box-shadow: var(--shadow-xl);
-            display: none;
-            z-index: 100;
-        }
-
-        .animation-preview.show {
-            display: block;
-        }
-
-        /* Context Menu */
-        .context-menu {
-            position: fixed;
-            background: white;
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 8px 0;
-            box-shadow: var(--shadow-lg);
-            display: none;
-            z-index: 1000;
-            min-width: 160px;
-        }
-
-        .context-menu.show {
-            display: block;
-        }
-
-        .context-menu-item {
-            padding: 8px 16px;
-            font-size: 14px;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .context-menu-item:hover {
-            background: var(--surface);
-        }
-
-        .context-menu-divider {
-            height: 1px;
-            background: var(--border);
-            margin: 4px 0;
-        }
-    </style>
-</head>
-<body>
-    <div class="app-layout">
-        <!-- Header -->
-        <header class="header">
-            <div class="logo">Slides AI Pro</div>
-            <button class="btn btn-secondary" onclick="showTemplates()">
-                <svg class="icon" viewBox="0 0 24 24">
-                    <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                    <rect x="4" y="4" width="6" height="5" rx="1" />
-                    <rect x="4" y="13" width="6" height="7" rx="1" />
-                    <rect x="14" y="4" width="6" height="7" rx="1" />
-                    <rect x="14" y="15" width="6" height="5" rx="1" />
-                </svg>
-                Templates
-            </button>
-            <div class="header-actions">
-                <button class="btn btn-secondary" onclick="startPresentation()">
-                    <svg class="icon" viewBox="0 0 24 24">
-                        <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                        <path d="M8 5v14l11 -7z" />
-                    </svg>
-                    Present
-                </button>
-                <button class="btn btn-secondary" onclick="sharePresentation()">
-                    <svg class="icon" viewBox="0 0 24 24">
-                        <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                        <circle cx="6" cy="12" r="3" />
-                        <circle cx="18" cy="6" r="3" />
-                        <circle cx="18" cy="18" r="3" />
-                        <line x1="8.7" y1="10.7" x2="15.3" y2="7.3" />
-                        <line x1="8.7" y1="13.3" x2="15.3" y2="16.7" />
-                    </svg>
-                    Share
-                </button>
-                <button class="btn btn-primary" onclick="exportPresentation()">
-                    <svg class="icon" viewBox="0 0 24 24" fill="none">
-                        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" stroke="white"/>
-                    </svg>
-                    Export
-                </button>
-            </div>
-        </header>
-
-        <!-- Sidebar -->
-        <aside class="sidebar">
-            <div class="sidebar-section">
-                <div class="sidebar-title">Slides</div>
-                <button class="btn btn-primary" style="width: 100%;" onclick="addNewSlide()">
-                    <svg class="icon" viewBox="0 0 24 24" fill="none">
-                        <path d="M12 5v14M5 12h14" stroke="white"/>
-                    </svg>
-                    New Slide
-                </button>
-            </div>
-            <div class="slides-container" id="slidesContainer">
-                <!-- Slides will be rendered here -->
-            </div>
-        </aside>
-
-        <!-- Main Content -->
-        <main class="main-content">
-            <!-- Editor Toolbar -->
-            <div class="editor-toolbar">
-                <div class="toolbar-group">
-                    <button class="toolbar-btn" onclick="addElement('title')" title="Add Title">
-                        <svg class="icon" viewBox="0 0 24 24">
-                            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                            <line x1="4" y1="8" x2="20" y2="8" />
-                            <line x1="8" y1="4" x2="8" y2="20" />
-                            <line x1="16" y1="4" x2="16" y2="20" />
-                            <line x1="12" y1="4" x2="12" y2="8" />
-                        </svg>
-                    </button>
-                    <button class="toolbar-btn" onclick="addElement('text')" title="Add Text">
-                        <svg class="icon" viewBox="0 0 24 24">
-                            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                            <line x1="3" y1="7" x2="21" y2="7" />
-                            <line x1="3" y1="11" x2="21" y2="11" />
-                            <line x1="3" y1="15" x2="18" y2="15" />
-                        </svg>
-                    </button>
-                    <button class="toolbar-btn" onclick="addElement('bullet')" title="Add Bullet List">
-                        <svg class="icon" viewBox="0 0 24 24">
-                            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                            <line x1="9" y1="6" x2="20" y2="6" />
-                            <line x1="9" y1="12" x2="20" y2="12" />
-                            <line x1="9" y1="18" x2="20" y2="18" />
-                            <circle cx="4" cy="6" r="1" fill="currentColor" />
-                            <circle cx="4" cy="12" r="1" fill="currentColor" />
-                            <circle cx="4" cy="18" r="1" fill="currentColor" />
-                        </svg>
-                    </button>
-                    <button class="toolbar-btn" onclick="addElement('image')" title="Add Image">
-                        <svg class="icon" viewBox="0 0 24 24">
-                            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                            <rect x="3" y="3" width="18" height="18" rx="3" />
-                            <path d="M5 18l3.5-4.5 2.5 3 3.5-4.5 4.5 6" />
-                            <circle cx="14.5" cy="7.5" r="1.5" />
-                        </svg>
-                    </button>
-                    <button class="toolbar-btn" onclick="addElement('chart')" title="Add Chart">
-                        <svg class="icon" viewBox="0 0 24 24">
-                            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                            <line x1="4" y1="19" x2="20" y2="19" />
-                            <polyline points="4 15 8 9 12 11 16 6 20 10" />
-                        </svg>
-                    </button>
-                    <button class="toolbar-btn" onclick="addElement('quote')" title="Add Quote">
-                        <svg class="icon" viewBox="0 0 24 24">
-                            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                            <path d="M6 15h15l-2 -6h-8l-2 6z" />
-                            <path d="M14 9v-4a1 1 0 0 0 -1 -1h-2a1 1 0 0 0 -1 1v4" />
-                        </svg>
-                    </button>
-                    <button class="toolbar-btn" onclick="addElement('code')" title="Add Code">
-                        <svg class="icon" viewBox="0 0 24 24">
-                            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                            <polyline points="7 8 3 12 7 16" />
-                            <polyline points="17 8 21 12 17 16" />
-                            <line x1="14" y1="4" x2="10" y2="20" />
-                        </svg>
-                    </button>
-                </div>
-                
-                <div class="toolbar-group">
-                    <button class="toolbar-btn" onclick="changeTextStyle('bold')" title="Bold">
-                        <svg class="icon" viewBox="0 0 24 24">
-                            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                            <path d="M7 5h6a3.5 3.5 0 0 1 0 7h-6z" />
-                            <path d="M13 12h1a3.5 3.5 0 0 1 0 7h-7v-7" />
-                        </svg>
-                    </button>
-                    <button class="toolbar-btn" onclick="changeTextStyle('italic')" title="Italic">
-                        <svg class="icon" viewBox="0 0 24 24">
-                            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                            <line x1="11" y1="5" x2="17" y2="5" />
-                            <line x1="7" y1="19" x2="13" y2="19" />
-                            <line x1="14" y1="5" x2="10" y2="19" />
-                        </svg>
-                    </button>
-                    <button class="toolbar-btn" onclick="changeTextStyle('underline')" title="Underline">
-                        <svg class="icon" viewBox="0 0 24 24">
-                            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                            <path d="M7 5v5a5 5 0 0 0 10 0v-5" />
-                            <path d="M5 19h14" />
-                        </svg>
-                    </button>
-                    <button class="toolbar-btn" onclick="changeTextStyle('strikethrough')" title="Strikethrough">
-                        <svg class="icon" viewBox="0 0 24 24">
-                            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                            <line x1="5" y1="12" x2="19" y2="12" />
-                            <path d="M16 6.5a4 2 0 0 0 -4 -1.5h-1a3.5 3.5 0 0 0 0 7h2a3.5 3.5 0 0 1 0 7h-1.5a4 2 0 0 1 -4 -1.5" />
-                        </svg>
-                    </button>
-                </div>
-
-                <div class="toolbar-group">
-                    <button class="toolbar-btn" onclick="toggleColorPicker()" title="Text Color">
-                        <svg class="icon" viewBox="0 0 24 24">
-                            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                            <path d="M11 7l6 6m-3 -3v8a2 2 0 0 1 -2 2h-8a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h4" />
-                            <rect x="13" y="3" width="8" height="8" rx="1" />
-                        </svg>
-                        <div class="color-picker-dropdown" id="colorPicker"></div>
-                    </button>
-                    <div class="font-size-selector">
-                        <button class="font-size-btn" onclick="changeFontSize(-2)">-</button>
-                        <span class="font-size-display" id="fontSizeDisplay">20</span>
-                        <button class="font-size-btn" onclick="changeFontSize(2)">+</button>
-                    </div>
-                </div>
-
-                <div class="toolbar-group">
-                    <button class="toolbar-btn" onclick="changeAlignment('left')" title="Align Left">
-                        <svg class="icon" viewBox="0 0 24 24">
-                            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                            <line x1="4" y1="6" x2="16" y2="6" />
-                            <line x1="4" y1="10" x2="20" y2="10" />
-                            <line x1="4" y1="14" x2="16" y2="14" />
-                            <line x1="4" y1="18" x2="20" y2="18" />
-                        </svg>
-                    </button>
-                    <button class="toolbar-btn" onclick="changeAlignment('center')" title="Align Center">
-                        <svg class="icon" viewBox="0 0 24 24">
-                            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                            <line x1="8" y1="6" x2="16" y2="6" />
-                            <line x1="4" y1="10" x2="20" y2="10" />
-                            <line x1="8" y1="14" x2="16" y2="14" />
-                            <line x1="4" y1="18" x2="20" y2="18" />
-                        </svg>
-                    </button>
-                    <button class="toolbar-btn" onclick="changeAlignment('right')" title="Align Right">
-                        <svg class="icon" viewBox="0 0 24 24">
-                            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                            <line x1="8" y1="6" x2="20" y2="6" />
-                            <line x1="4" y1="10" x2="20" y2="10" />
-                            <line x1="8" y1="14" x2="20" y2="14" />
-                            <line x1="4" y1="18" x2="20" y2="18" />
-                        </svg>
-                    </button>
-                </div>
-
-                <div class="toolbar-group">
-                    <button class="toolbar-btn" onclick="showLayoutOptions()" title="Change Layout">
-                        <svg class="icon" viewBox="0 0 24 24">
-                            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                            <rect x="4" y="4" width="6" height="6" rx="1" />
-                            <rect x="14" y="4" width="6" height="6" rx="1" />
-                            <rect x="4" y="14" width="6" height="6" rx="1" />
-                            <rect x="14" y="14" width="6" height="6" rx="1" />
-                        </svg>
-                    </button>
-                    <button class="toolbar-btn" onclick="addAnimation()" title="Add Animation">
-                        <svg class="icon" viewBox="0 0 24 24">
-                            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                            <path d="M12 21a9 9 0 1 1 0 -18a9 8 0 0 1 9 8a4.5 4 0 0 1 -4.5 4h-2.5a2 2 0 0 0 -1 3.75a1.3 1.3 0 0 1 -1 2.25" />
-                            <circle cx="7.5" cy="10.5" r=".5" fill="currentColor" />
-                            <circle cx="12" cy="7.5" r=".5" fill="currentColor" />
-                            <circle cx="16.5" cy="10.5" r=".5" fill="currentColor" />
-                        </svg>
-                    </button>
-                    <button class="toolbar-btn" onclick="togglePresenterNotes()" title="Presenter Notes">
-                        <svg class="icon" viewBox="0 0 24 24">
-                            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                            <path d="M14 3v4a1 1 0 0 0 1 1h4" />
-                            <path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2z" />
-                            <line x1="9" y1="9" x2="10" y2="9" />
-                            <line x1="9" y1="13" x2="15" y2="13" />
-                            <line x1="9" y1="17" x2="15" y2="17" />
-                        </svg>
-                    </button>
-                </div>
-
-                <div class="toolbar-group">
-                    <span style="font-size: 12px; color: var(--text-secondary);">Slide <span id="currentSlideNum">1</span> of <span id="totalSlides">1</span></span>
-                </div>
-            </div>
-
-            <!-- Canvas Area -->
-            <div class="canvas-area" id="canvasArea">
-                <div class="slide-canvas" id="slideCanvas">
-                    <!-- Slide content will be rendered here -->
-                </div>
-                <div class="presenter-notes" id="presenterNotes" contenteditable="true" placeholder="Add presenter notes here..."></div>
-            </div>
-        </main>
-    </div>
-
-    <!-- Progress Bar -->
-    <div class="progress-bar" id="progressBar">
-        <div class="progress-fill" id="progressFill"></div>
-    </div>
-
-    <!-- Context Menu -->
-    <div class="context-menu" id="contextMenu">
-        <div class="context-menu-item" onclick="copyElement()">
-            <svg class="icon" viewBox="0 0 24 24">
-                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                <rect x="8" y="8" width="12" height="12" rx="2" />
-                <path d="M16 8v-2a2 2 0 0 0 -2 -2h-8a2 2 0 0 0 -2 2v8a2 2 0 0 0 2 2h2" />
-            </svg>
-            Copy
-        </div>
-        <div class="context-menu-item" onclick="pasteElement()">
-            <svg class="icon" viewBox="0 0 24 24">
-                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                <path d="M9 5h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2h-2" />
-                <rect x="9" y="3" width="6" height="4" rx="2" />
-            </svg>
-            Paste
-        </div>
-        <div class="context-menu-divider"></div>
-        <div class="context-menu-item" onclick="deleteElement()">
-            <svg class="icon" viewBox="0 0 24 24">
-                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                <line x1="4" y1="7" x2="20" y2="7" />
-                <line x1="10" y1="11" x2="10" y2="17" />
-                <line x1="14" y1="11" x2="14" y2="17" />
-                <path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12" />
-                <path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3" />
-            </svg>
-            Delete
-        </div>
-    </div>
-
-    <!-- Templates Modal -->
-    <div class="templates-modal" id="templatesModal">
-        <div class="templates-content">
-            <h2>Choose a Template</h2>
-            <div class="templates-grid">
-                <div class="template-card" onclick="applyTemplate('business')">
-                    <div class="template-icon">💼</div>
-                    <div class="template-name">Business</div>
-                    <div class="template-description">Professional business presentation</div>
-                </div>
-                <div class="template-card" onclick="applyTemplate('education')">
-                    <div class="template-icon">🎓</div>
-                    <div class="template-name">Education</div>
-                    <div class="template-description">Teaching and learning</div>
-                </div>
-                <div class="template-card" onclick="applyTemplate('creative')">
-                    <div class="template-icon">🎨</div>
-                    <div class="template-name">Creative</div>
-                    <div class="template-description">Bold and artistic</div>
-                </div>
-                <div class="template-card" onclick="applyTemplate('startup')">
-                    <div class="template-icon">🚀</div>
-                    <div class="template-name">Startup Pitch</div>
-                    <div class="template-description">Investor pitch deck</div>
-                </div>
-                <div class="template-card" onclick="applyTemplate('sales')">
-                    <div class="template-icon">📊</div>
-                    <div class="template-name">Sales</div>
-                    <div class="template-description">Sales and marketing</div>
-                </div>
-                <div class="template-card" onclick="applyTemplate('minimal')">
-                    <div class="template-icon">⚪</div>
-                    <div class="template-name">Minimal</div>
-                    <div class="template-description">Clean and simple</div>
-                </div>
-            </div>
-            <button class="btn btn-secondary" onclick="closeTemplates()" style="margin-top: 24px;">Cancel</button>
-        </div>
-    </div>
-
-    <!-- AI Assistant -->
-    <div class="ai-assistant" id="aiAssistant">
-        <div class="ai-header">
-            <div class="ai-header-title">
-                <div class="ai-status"></div>
-                <h3 style="font-size: 16px; font-weight: 600;">AI Assistant Pro</h3>
-            </div>
-            <button class="btn btn-icon" onclick="toggleAI()">
-                <svg class="icon" viewBox="0 0 24 24">
-                    <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                    <line x1="18" y1="6" x2="6" y2="18" />
-                    <line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
-            </button>
-        </div>
-        <div class="ai-messages" id="aiMessages">
-            <div class="ai-message">
-                <div class="ai-avatar assistant">AI</div>
-                <div class="ai-content">
-                    Welcome to Slides AI Pro! I can understand complex commands and help you create amazing presentations. Try these:
-                    <div class="ai-suggestions">
-                        <div class="suggestion-chip" onclick="sendQuickCommand('Create a 5 slide presentation about artificial intelligence with modern design')">Create full presentation</div>
-                        <div class="suggestion-chip" onclick="sendQuickCommand('Add a chart showing quarterly sales growth from Q1: $1M, Q2: $1.5M, Q3: $2M, Q4: $2.8M')">Add data visualization</div>
-                        <div class="suggestion-chip" onclick="sendQuickCommand('Change all titles to blue gradient and make them 20% larger with fade-in animation')">Complex styling</div>
-                        <div class="suggestion-chip" onclick="sendQuickCommand('Generate a SWOT analysis slide')">Business frameworks</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="ai-input-area">
-            <div class="ai-input-wrapper">
-                <textarea class="ai-input" id="aiInput" placeholder="Describe what you want in detail..." onkeypress="handleAIKeypress(event)"></textarea>
-                <button class="btn btn-primary btn-icon" onclick="sendAIMessage()">
-                    <svg class="icon" viewBox="0 0 24 24" fill="none">
-                        <path d="M5 12h14M12 5l7 7-7 7" stroke="white"/>
-                    </svg>
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- AI Trigger Button -->
-    <button class="ai-trigger" id="aiTrigger" onclick="toggleAI()">
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="white">
-            <path d="M21.928 11.607c-.202-.488-.635-.605-.928-.633V8c0-1.103-.897-2-2-2h-6V4.61c.305-.274.5-.668.5-1.11a1.5 1.5 0 0 0-3 0c0 .442.195.836.5 1.11V6H5c-1.103 0-2 .897-2 2v2.997l-.082.006A1 1 0 0 0 1.99 12v2a1 1 0 0 0 1 1H3v5c0 1.103.897 2 2 2h14c1.103 0 2-.897 2-2v-5a1 1 0 0 0 1-1v-1.938a1.006 1.006 0 0 0-.072-.455zM5 8h14l.001 3H5V8zm14 12H5v-7h14v7z"/>
-            <circle cx="8" cy="14" r="1"/>
-            <circle cx="12" cy="14" r="1"/>
-            <circle cx="16" cy="14" r="1"/>
-            <circle cx="8" cy="17" r="1"/>
-            <circle cx="12" cy="17" r="1"/>
-            <circle cx="16" cy="17" r="1"/>
-        </svg>
-    </button>
-
-    <script>
-        // Enhanced State Management
-        let presentation = {
-            id: Date.now(),
-            title: 'Untitled Presentation',
-            slides: [
-                {
-                    id: 1,
-                    elements: [
-                        {
-                            id: 'el1',
-                            type: 'title',
-                            content: 'Welcome to Slides AI Pro',
-                            style: {
-                                fontSize: '48px',
-                                textAlign: 'center'
-                            },
-                            animation: 'fadeIn'
-                        },
-                        {
-                            id: 'el2',
-                            type: 'subtitle',
-                            content: 'Create powerful presentations with advanced AI assistance',
-                            style: {
-                                textAlign: 'center'
-                            },
-                            animation: 'slideIn'
-                        }
-                    ],
-                    background: '#ffffff',
-                    layout: 'center',
-                    notes: '',
-                    transitions: {}
+import React, { useState, useEffect, useRef } from 'react';
+import { Plus, Type, Palette, ArrowBigUp, ArrowBigDown, Trash2, Mic, Bot } from 'lucide-react';
+
+// --- Helper Functions & Initial Data ---
+const generateId = () => `el_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+const initialSlides = [
+    {
+        id: 'slide_1',
+        elements: [
+            {
+                id: generateId(),
+                type: 'text',
+                content: 'Welcome to AI Presenter!',
+                x: 50,
+                y: 100,
+                width: 700,
+                height: 100,
+                style: {
+                    fontSize: '48px',
+                    fontWeight: 'bold',
+                    color: '#1e293b',
+                    textAlign: 'center',
+                    fontFamily: 'Inter, sans-serif'
                 }
-            ],
-            currentSlide: 0,
-            theme: 'modern',
-            globalStyles: {},
-            animations: true
+            },
+            {
+                id: generateId(),
+                type: 'text',
+                content: "Use the chat on the left to edit this presentation with AI. Try prompts like:\n\n- \"Change the title to 'My First Presentation'\"\n- \"Add a text box with 'Hello World'\"\n- \"Make this text blue and larger\"\n- \"Add a new slide\"",
+                x: 100,
+                y: 250,
+                width: 600,
+                height: 200,
+                style: {
+                    fontSize: '20px',
+                    color: '#475569',
+                    textAlign: 'left',
+                    fontFamily: 'Inter, sans-serif'
+                }
+            }
+        ],
+        background: '#f1f5f9'
+    }
+];
+
+
+// --- Main App Component ---
+export default function App() {
+    const [slides, setSlides] = useState(initialSlides);
+    const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
+    const [selectedElementId, setSelectedElementId] = useState(null);
+    const [aiPrompt, setAiPrompt] = useState('');
+    const [isAiThinking, setIsAiThinking] = useState(false);
+    const [chatHistory, setChatHistory] = useState([]);
+    
+    const selectedElement = slides[currentSlideIndex]?.elements.find(el => el.id === selectedElementId);
+    const canvasRef = useRef(null);
+
+    // --- State Update Functions ---
+
+    const updateElementStyle = (elementId, newStyles) => {
+        setSlides(prevSlides => prevSlides.map((slide, index) => {
+            if (index !== currentSlideIndex) return slide;
+            return {
+                ...slide,
+                elements: slide.elements.map(el => {
+                    if (el.id === elementId) {
+                        return { ...el, style: { ...el.style, ...newStyles } };
+                    }
+                    return el;
+                })
+            };
+        }));
+    };
+    
+    const updateElementPosition = (elementId, newPosition) => {
+        setSlides(prevSlides => prevSlides.map((slide, index) => {
+            if (index !== currentSlideIndex) return slide;
+            return {
+                ...slide,
+                elements: slide.elements.map(el => {
+                    if (el.id === elementId) {
+                        return { ...el, ...newPosition };
+                    }
+                    return el;
+                })
+            };
+        }));
+    };
+
+    const updateElementContent = (elementId, content) => {
+        setSlides(prevSlides => prevSlides.map((slide, index) => {
+            if (index !== currentSlideIndex) return slide;
+            return {
+                ...slide,
+                elements: slide.elements.map(el => {
+                    if (el.id === elementId) {
+                        return { ...el, content };
+                    }
+                    return el;
+                })
+            };
+        }));
+    };
+
+
+    const addElement = (elementType, content = 'New Text', customProps = {}) => {
+        const newElement = {
+            id: generateId(),
+            type: elementType,
+            content,
+            x: 150,
+            y: 150,
+            width: 300,
+            height: 50,
+            style: {
+                fontSize: '24px',
+                color: '#1e293b',
+                fontFamily: 'Inter, sans-serif',
+                ...customProps.style
+            },
+            ...customProps
         };
 
-        let selectedElement = null;
-        let copiedElement = null;
-        let isAIProcessing = false;
-        let commandHistory = [];
-        let currentFontSize = 20;
+        setSlides(prevSlides => prevSlides.map((slide, index) => {
+            if (index !== currentSlideIndex) return slide;
+            return { ...slide, elements: [...slide.elements, newElement] };
+        }));
+        setSelectedElementId(newElement.id);
+    };
 
-        // Color palette
-        const colorPalette = [
-            '#000000', '#1e293b', '#334155', '#64748b', '#94a3b8', '#cbd5e1', '#e2e8f0', '#ffffff',
-            '#ef4444', '#f87171', '#fca5a5', '#fecaca', '#fee2e2', '#fef2f2', '#dc2626', '#b91c1c',
-            '#f59e0b', '#fbbf24', '#fcd34d', '#fde68a', '#fef3c7', '#fffbeb', '#d97706', '#b45309',
-            '#10b981', '#34d399', '#6ee7b7', '#a7f3d0', '#d1fae5', '#ecfdf5', '#059669', '#047857',
-            '#3b82f6', '#60a5fa', '#93c5fd', '#bfdbfe', '#dbeafe', '#eff6ff', '#2563eb', '#1d4ed8',
-            '#8b5cf6', '#a78bfa', '#c4b5fd', '#ddd6fe', '#ede9fe', '#f5f3ff', '#7c3aed', '#6d28d9'
-        ];
+    const deleteElement = (elementId) => {
+        setSlides(prevSlides => prevSlides.map((slide, index) => {
+            if (index !== currentSlideIndex) return slide;
+            return { ...slide, elements: slide.elements.filter(el => el.id !== elementId) };
+        }));
+        setSelectedElementId(null);
+    };
 
-        // Initialize
-        document.addEventListener('DOMContentLoaded', () => {
-            renderSlidesList();
-            renderSlide();
-            updateSlideCounter();
-            initColorPicker();
-            setupContextMenu();
-            setupKeyboardShortcuts();
-            loadAutoSave();
-        });
+    const addSlide = () => {
+        const newSlide = {
+            id: `slide_${Date.now()}`,
+            elements: [],
+            background: '#f1f5f9'
+        };
+        setSlides(prevSlides => [...prevSlides, newSlide]);
+        setCurrentSlideIndex(slides.length);
+    };
+    
+    const setSlideBackground = (color) => {
+        setSlides(prevSlides => prevSlides.map((slide, index) => {
+            if (index !== currentSlideIndex) return slide;
+            return { ...slide, background: color };
+        }));
+    }
 
-        // Auto-save functionality
-        function autoSave() {
-            localStorage.setItem('presentation', JSON.stringify(presentation));
-        }
+    // --- AI Command Handling ---
 
-        function loadAutoSave() {
-            const saved = localStorage.getItem('presentation');
-            if (saved) {
-                try {
-                    presentation = JSON.parse(saved);
-                    renderSlidesList();
-                    renderSlide();
-                    updateSlideCounter();
-                } catch (e) {
-                    console.error('Failed to load saved presentation:', e);
-                }
+    const handleAiPrompt = async () => {
+        if (!aiPrompt.trim() || isAiThinking) return;
+
+        setIsAiThinking(true);
+        const userMessage = { role: 'user', text: aiPrompt };
+        setChatHistory(prev => [...prev, userMessage]);
+        
+        const currentSlideData = slides[currentSlideIndex];
+        const contextPrompt = `
+You are an AI presentation assistant. The user wants to modify a presentation slide.
+Analyze the user's request and generate a JSON object with a command and payload to perform the action.
+
+Here is the current slide's data:
+${JSON.stringify(currentSlideData, null, 2)}
+
+Here is the ID of the currently selected element (if any): ${selectedElementId}
+
+Supported commands and their payloads:
+- "ADD_ELEMENT": { "type": "text", "content": "Text content", "props": { ...element properties... } }
+- "UPDATE_STYLE": { "elementId": "id_of_element_to_update", "style": { "fontSize": "24px", "color": "#ff0000", ... } }
+- "UPDATE_CONTENT": { "elementId": "id_of_element_to_update", "content": "New text content" }
+- "DELETE_ELEMENT": { "elementId": "id_of_element_to_delete" }
+- "CHANGE_BACKGROUND": { "color": "#hexcode" }
+- "ADD_SLIDE": {}
+- "NO_OP": { "reason": "Reason for no operation" }
+
+If the user's request is ambiguous about which element to change, and an element is selected, assume they mean the selected element. If no element is selected, you can add a new one or ask for clarification via NO_OP.
+Do not respond with anything other than the JSON command object.
+User Request: "${aiPrompt}"
+`;
+
+        const schema = {
+            type: "OBJECT",
+            properties: {
+                "command": { "type": "STRING" },
+                "payload": { "type": "OBJECT" }
             }
-        }
+        };
 
-        // Enhanced Slide Management
-        function renderSlidesList() {
-            const container = document.getElementById('slidesContainer');
-            container.innerHTML = '';
+        try {
+            const chatHistoryForApi = [{ role: "user", parts: [{ text: contextPrompt }] }];
+            const payload = {
+                contents: chatHistoryForApi,
+                generationConfig: {
+                    responseMimeType: "application/json",
+                    responseSchema: schema,
+                }
+            };
+            const apiKey = "";
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const result = await response.json();
             
-            presentation.slides.forEach((slide, index) => {
-                const slideItem = document.createElement('div');
-                slideItem.className = `slide-item ${index === presentation.currentSlide ? 'active' : ''}`;
-                slideItem.onclick = () => selectSlide(index);
-                
-                const mainElement = slide.elements.find(el => el.type === 'title') || slide.elements[0];
-                const contentPreview = mainElement ? mainElement.content.replace(/<[^>]*>/g, '') : 'Empty slide';
-                
-                slideItem.innerHTML = `
-                    <div class="slide-number">SLIDE ${index + 1}</div>
-                    <div class="slide-preview">${contentPreview.substring(0, 50)}${contentPreview.length > 50 ? '...' : ''}</div>
-                    <div class="slide-meta">${slide.elements.length} elements${slide.notes ? ' • Has notes' : ''}</div>
-                    <div class="slide-actions">
-                        <button class="btn btn-icon" onclick="duplicateSlide(${index}); event.stopPropagation();" title="Duplicate">
-                            <svg class="icon" viewBox="0 0 24 24">
-                                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                                <rect x="7" y="7" width="10" height="10" rx="1" />
-                                <path d="M7 14v-7a1 1 0 0 1 1 -1h7" />
-                            </svg>
-                        </button>
-                        <button class="btn btn-icon" onclick="deleteSlide(${index}); event.stopPropagation();" title="Delete">
-                            <svg class="icon" viewBox="0 0 24 24">
-                                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                                <line x1="4" y1="7" x2="20" y2="7" />
-                                <line x1="10" y1="11" x2="10" y2="17" />
-                                <line x1="14" y1="11" x2="14" y2="17" />
-                                <path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12" />
-                                <path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3" />
-                            </svg>
+            if (result.candidates && result.candidates[0].content && result.candidates[0].content.parts.length > 0) {
+                const aiResponseText = result.candidates[0].content.parts[0].text;
+                const aiCommand = JSON.parse(aiResponseText);
+
+                const botMessage = { role: 'bot', text: `Executing command: ${aiCommand.command}` };
+                setChatHistory(prev => [...prev, botMessage]);
+
+                executeAiCommand(aiCommand);
+            } else {
+                 const errorMessage = { role: 'bot', text: `Sorry, I couldn't understand that. The response was: ${JSON.stringify(result)}` };
+                setChatHistory(prev => [...prev, errorMessage]);
+            }
+        } catch (error) {
+            console.error("AI Error:", error);
+            const errorMessage = { role: 'bot', text: "Sorry, I encountered an error. Please try again." };
+            setChatHistory(prev => [...prev, errorMessage]);
+        } finally {
+            setIsAiThinking(false);
+            setAiPrompt('');
+        }
+    };
+
+    const executeAiCommand = (command) => {
+        const { command: action, payload } = command;
+        const targetId = payload.elementId || selectedElementId;
+        
+        switch (action) {
+            case 'ADD_ELEMENT':
+                addElement(payload.type, payload.content, payload.props);
+                break;
+            case 'UPDATE_STYLE':
+                if (targetId) {
+                    updateElementStyle(targetId, payload.style);
+                }
+                break;
+            case 'UPDATE_CONTENT':
+                 if (targetId) {
+                    updateElementContent(targetId, payload.content);
+                }
+                break;
+            case 'DELETE_ELEMENT':
+                 if (targetId) {
+                    deleteElement(targetId);
+                }
+                break;
+            case 'CHANGE_BACKGROUND':
+                setSlideBackground(payload.color);
+                break;
+            case 'ADD_SLIDE':
+                addSlide();
+                break;
+            case 'NO_OP':
+                const noopMessage = { role: 'bot', text: payload.reason || "I couldn't determine an action. Could you be more specific?" };
+                setChatHistory(prev => [...prev, noopMessage]);
+                break;
+            default:
+                const defaultMessage = { role: 'bot', text: `Unknown command: ${action}` };
+                setChatHistory(prev => [...prev, defaultMessage]);
+        }
+    };
+
+
+    return (
+        <div className="flex h-screen w-screen bg-gray-100 font-sans">
+            {/* AI Chat Panel */}
+            <div className="w-1/4 max-w-sm h-full flex flex-col bg-white border-r border-gray-200 shadow-md">
+                <div className="p-4 border-b border-gray-200">
+                    <h2 className="text-xl font-bold text-gray-800">AI Assistant</h2>
+                    <p className="text-sm text-gray-500">Describe the changes you want.</p>
+                </div>
+                <div className="flex-grow p-4 overflow-y-auto">
+                    {chatHistory.map((msg, index) => (
+                        <div key={index} className={`flex items-start gap-3 my-4 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                           {msg.role === 'bot' && <div className="p-2 rounded-full bg-indigo-500 text-white"><Bot size={20}/></div>}
+                            <div className={`max-w-xs p-3 rounded-lg ${msg.role === 'user' ? 'bg-indigo-500 text-white rounded-br-none' : 'bg-gray-200 text-gray-800 rounded-bl-none'}`}>
+                                <p className="text-sm">{msg.text}</p>
+                            </div>
+                             {msg.role === 'user' && <div className="p-2 rounded-full bg-gray-200 text-gray-700"><Mic size={20}/></div>}
+                        </div>
+                    ))}
+                     {isAiThinking && (
+                        <div className="flex items-start gap-3 my-4 justify-start">
+                            <div className="p-2 rounded-full bg-indigo-500 text-white"><Bot size={20}/></div>
+                            <div className="p-3 rounded-lg bg-gray-200 text-gray-800 rounded-bl-none">
+                                <div className="flex items-center gap-2">
+                                  <div className="w-2 h-2 bg-indigo-400 rounded-full animate-pulse"></div>
+                                  <div className="w-2 h-2 bg-indigo-400 rounded-full animate-pulse delay-75"></div>
+                                  <div className="w-2 h-2 bg-indigo-400 rounded-full animate-pulse delay-150"></div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+                <div className="p-4 border-t border-gray-200 bg-white">
+                    <div className="relative">
+                        <textarea
+                            value={aiPrompt}
+                            onChange={(e) => setAiPrompt(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), handleAiPrompt())}
+                            className="w-full p-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"
+                            placeholder="e.g., 'Make the title bigger'"
+                            rows={2}
+                            disabled={isAiThinking}
+                        />
+                        <button 
+                            onClick={handleAiPrompt}
+                            disabled={isAiThinking}
+                            className="absolute top-1/2 right-2 -translate-y-1/2 p-1.5 bg-indigo-500 text-white rounded-md hover:bg-indigo-600 disabled:bg-indigo-300 transition-colors"
+                        >
+                           <ArrowBigUp size={20} />
                         </button>
                     </div>
-                `;
-                
-                container.appendChild(slideItem);
-            });
-            
-            autoSave();
-        }
+                </div>
+            </div>
 
-        function renderSlide() {
-            const canvas = document.getElementById('slideCanvas');
-            const slide = presentation.slides[presentation.currentSlide];
-            
-            canvas.innerHTML = '';
-            canvas.style.background = slide.background || '#ffffff';
-            canvas.className = `slide-canvas ${slide.layout ? `layout-${slide.layout}` : ''}`;
-            
-            // Apply slide layout
-            if (slide.layout === 'two-column') {
-                canvas.style.display = 'grid';
-                canvas.style.gridTemplateColumns = '1fr 1fr';
-                canvas.style.gap = '40px';
-            } else if (slide.layout === 'title-only') {
-                canvas.style.display = 'flex';
-                canvas.style.flexDirection = 'column';
-                canvas.style.justifyContent = 'center';
-                canvas.style.alignItems = 'center';
-            } else {
-                canvas.style.display = 'flex';
-                canvas.style.flexDirection = 'column';
-                canvas.style.gap = '24px';
-            }
-            
-            slide.elements.forEach((element, index) => {
-                const el = document.createElement('div');
-                el.className = `slide-element ${element.type}`;
-                if (element.animation) {
-                    el.classList.add(`animation-${element.animation}`);
-                }
-                el.contentEditable = true;
-                el.id = element.id;
-                el.innerHTML = element.content || `<span class="element-placeholder">Click to add ${element.type}</span>`;
-                
-                // Apply custom styles
-                Object.assign(el.style, element.style);
-                
-                // Add element controls
-                const controls = document.createElement('div');
-                controls.className = 'element-controls';
-                controls.innerHTML = `
-                    <button class="btn btn-icon" onclick="moveElement('${element.id}', 'up')" title="Move Up">↑</button>
-                    <button class="btn btn-icon" onclick="moveElement('${element.id}', 'down')" title="Move Down">↓</button>
-                    <button class="btn btn-icon" onclick="removeElement('${element.id}')" title="Delete">×</button>
-                `;
-                el.appendChild(controls);
-                
-                // Event listeners
-                el.addEventListener('focus', () => selectElement(element.id));
-                el.addEventListener('blur', () => updateElement(element.id, el.innerHTML));
-                el.addEventListener('input', () => updateElement(element.id, el.innerHTML));
-                el.addEventListener('contextmenu', (e) => showContextMenu(e, element.id));
-                
-                canvas.appendChild(el);
-            });
-            
-            // Update presenter notes
-            const notesEl = document.getElementById('presenterNotes');
-            notesEl.textContent = slide.notes || '';
-            
-            autoSave();
-        }
+            {/* Main Content Area */}
+            <div className="flex-grow flex flex-col">
+                {/* Toolbar */}
+                <div className="flex-shrink-0 bg-white h-16 border-b border-gray-200 flex items-center px-4 justify-between shadow-sm">
+                    <div className="flex items-center gap-2">
+                        <button onClick={() => addElement('text')} className="flex items-center gap-2 px-3 py-2 text-sm font-medium bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition">
+                            <Type size={16}/> Add Text
+                        </button>
+                    </div>
+                     {selectedElement && (
+                        <div className="flex items-center gap-4 bg-white p-2 rounded-lg border border-gray-200">
+                           <input 
+                                type="color"
+                                value={selectedElement.style.color || '#000000'}
+                                onChange={(e) => updateElementStyle(selectedElementId, { color: e.target.value })}
+                                className="w-8 h-8 p-0 border-none rounded cursor-pointer"
+                                title="Text Color"
+                           />
+                           <div className="flex items-center gap-1">
+                                <Palette size={16} className="text-gray-500" />
+                                <input 
+                                    type="color"
+                                    value={selectedElement.style.backgroundColor || '#ffffff'}
+                                    onChange={(e) => updateElementStyle(selectedElementId, { backgroundColor: e.target.value })}
+                                    className="w-8 h-8 p-0 border-none rounded cursor-pointer"
+                                    title="Background Color"
+                                />
+                            </div>
+                           <div className="flex items-center gap-2">
+                                <input 
+                                    type="number" 
+                                    value={parseInt(selectedElement.style.fontSize) || 24}
+                                    onChange={(e) => updateElementStyle(selectedElementId, { fontSize: `${e.target.value}px` })}
+                                    className="w-16 p-1 border border-gray-300 rounded-md text-sm text-center"
+                                    title="Font Size"
+                                />
+                           </div>
+                           <button onClick={() => deleteElement(selectedElementId)} className="p-2 text-red-500 hover:bg-red-100 rounded-md transition">
+                                <Trash2 size={16} />
+                           </button>
+                        </div>
+                    )}
+                     <div/>
+                </div>
 
-        function selectSlide(index) {
-            presentation.currentSlide = index;
-            renderSlidesList();
-            renderSlide();
-            updateSlideCounter();
-        }
+                {/* Canvas */}
+                <div className="flex-grow flex items-center justify-center p-8 bg-gray-200 overflow-auto">
+                    <div 
+                      ref={canvasRef}
+                      className="w-[800px] h-[600px] bg-white shadow-2xl relative"
+                      style={{ background: slides[currentSlideIndex]?.background || '#ffffff' }}
+                      onClick={(e) => e.target === canvasRef.current && setSelectedElementId(null)}
+                      >
+                       {slides[currentSlideIndex]?.elements.map(el => (
+                           <SlideElement
+                                key={el.id}
+                                element={el}
+                                isSelected={selectedElementId === el.id}
+                                onSelect={() => setSelectedElementId(el.id)}
+                                onUpdate={updateElementPosition}
+                           />
+                       ))}
+                    </div>
+                </div>
 
-        function addNewSlide() {
-            const newSlide = {
-                id: Date.now(),
-                elements: [
-                    {
-                        id: `el${Date.now()}`,
-                        type: 'title',
-                        content: 'New Slide',
-                        style: {
-                            fontSize: '48px',
-                            textAlign: 'center'
-                        }
-                    }
-                ],
-                background: '#ffffff',
-                layout: 'default',
-                notes: ''
-            };
-            
-            presentation.slides.push(newSlide);
-            selectSlide(presentation.slides.length - 1);
-        }
+                {/* Slide Previews */}
+                <div className="flex-shrink-0 bg-white h-28 border-t border-gray-200 flex items-center p-4 gap-4 shadow-inner">
+                    {slides.map((slide, index) => (
+                       <div 
+                            key={slide.id}
+                            onClick={() => setCurrentSlideIndex(index)}
+                            className={`w-32 h-24 rounded border-2 cursor-pointer transition-all flex-shrink-0
+                                ${index === currentSlideIndex ? 'border-indigo-500 shadow-md' : 'border-gray-300 hover:border-indigo-400'}
+                            `}
+                       >
+                            <div 
+                                className="w-full h-full scale-[0.16] origin-top-left"
+                                style={{ background: slide.background }}
+                            >
+                                {slide.elements.map(el => (
+                                    <div key={el.id} style={{
+                                        position: 'absolute',
+                                        left: el.x,
+                                        top: el.y,
+                                        width: el.width,
+                                        height: el.height,
+                                        ...el.style,
+                                        backgroundColor: el.style.backgroundColor || 'transparent'
+                                    }}>{el.type === 'text' && el.content}</div>
+                                ))}
+                            </div>
+                       </div>
+                    ))}
+                    <button onClick={addSlide} className="w-32 h-24 rounded border-2 border-dashed border-gray-400 text-gray-500 flex flex-col items-center justify-center hover:bg-gray-50 hover:border-indigo-500 hover:text-indigo-500 transition">
+                       <Plus size={24} />
+                       <span className="text-sm mt-1">New Slide</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
 
-        function duplicateSlide(index) {
-            const slide = presentation.slides[index];
-            const duplicate = JSON.parse(JSON.stringify(slide));
-            duplicate.id = Date.now();
-            duplicate.elements.forEach(el => {
-                el.id = `el${Date.now()}${Math.random().toString(36).substr(2, 9)}`;
-            });
-            
-            presentation.slides.splice(index + 1, 0, duplicate);
-            selectSlide(
+
+// --- Sub-Components ---
+
+function SlideElement({ element, isSelected, onSelect, onUpdate }) {
+    const [isDragging, setIsDragging] = useState(false);
+    const dragStartPos = useRef({ x: 0, y: 0 });
+    const elementStartPos = useRef({ x: 0, y: 0 });
+
+    const handleMouseDown = (e) => {
+        // Prevent drag on content editable
+        if (e.target.isContentEditable) return;
+        
+        e.stopPropagation();
+        onSelect();
+        setIsDragging(true);
+        dragStartPos.current = { x: e.clientX, y: e.clientY };
+        elementStartPos.current = { x: element.x, y: element.y };
+        
+        window.addEventListener('mousemove', handleMouseMove);
+        window.addEventListener('mouseup', handleMouseUp);
+    };
+
+    const handleMouseMove = (e) => {
+        const dx = e.clientX - dragStartPos.current.x;
+        const dy = e.clientY - dragStartPos.current.y;
+        onUpdate(element.id, { x: elementStartPos.current.x + dx, y: elementStartPos.current.y + dy });
+    };
+
+    const handleMouseUp = () => {
+        setIsDragging(false);
+        window.removeEventListener('mousemove', handleMouseMove);
+        window.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    const style = {
+        left: `${element.x}px`,
+        top: `${element.y}px`,
+        width: `${element.width}px`,
+        height: `${element.height}px`,
+        ...element.style,
+        position: 'absolute',
+        cursor: isDragging ? 'grabbing' : 'grab',
+        outline: isSelected ? '2px solid #4f46e5' : 'none',
+        outlineOffset: '2px',
+        transition: 'outline 0.2s',
+        backgroundColor: element.style.backgroundColor || 'transparent',
+    };
+
+    if (element.type === 'text') {
+        return (
+            <div 
+                style={style}
+                onMouseDown={handleMouseDown}
+                onClick={(e) => e.stopPropagation()}
+            >
+                <div
+                    contentEditable
+                    suppressContentEditableWarning
+                    onBlur={(e) => onUpdate(element.id, { content: e.target.innerText })}
+                    style={{ width: '100%', height: '100%', outline: 'none', padding: '5px' }}
+                >
+                    {element.content}
+                </div>
+            </div>
+        );
+    }
+    return null;
+}
